@@ -79,8 +79,23 @@ def load_image_models():
     }
 
 def load_tts_model():
-    from kokoro import KPipeline
-    from threading import Lock
-    tts_pipeline = KPipeline(lang_code='a', repo_id="hexgrad/Kokoro-82M")
-    tts_lock = Lock()
-    return {"tts_pipeline": tts_pipeline, "tts_lock": tts_lock}
+    """
+    Load ElevenLabs TTS instead of Kokoro
+    """
+    try:
+        from elevenlabs import set_api_key
+        import os
+        
+        # ElevenLabs API-Key prüfen
+        api_key = os.getenv("ELEVENLABS_API_KEY")
+        if api_key:
+            set_api_key(api_key)
+            print("✅ ElevenLabs TTS initialized successfully")
+            return {"tts_pipeline": "elevenlabs", "tts_lock": None}
+        else:
+            print("⚠️ ELEVENLABS_API_KEY not set")
+            return {"tts_pipeline": None, "tts_lock": None}
+            
+    except Exception as e:
+        print(f"❌ ElevenLabs TTS initialization failed: {e}")
+        return {"tts_pipeline": None, "tts_lock": None}
