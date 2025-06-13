@@ -87,7 +87,7 @@ def load_tts_model():
         import os
         
         # ElevenLabs API-Key prüfen
-        api_key = os.getenv("ELEVENLABS_API_KEY")
+        api_key = os.getenv("sk_9739f15bbe43d93268abcba00d20ab63973945a02a36723a")
         if api_key:
             set_api_key(api_key)
             print("✅ ElevenLabs TTS initialized successfully")
