@@ -56,7 +56,7 @@ def generate_speech_segment_tts(text, tts_pipeline, tts_lock, voice='bf_isabella
         # Use ElevenLabs client from tts_pipeline
         if tts_pipeline and hasattr(tts_pipeline, 'text_to_speech'):
             # Method 1: Client text_to_speech method
-            audio_bytes = tts_pipeline.text_to_speech.convert(
+            audio_generator = tts_pipeline.text_to_speech.convert(
                 voice_id=elevenlabs_voice,
                 text=text,
                 model_id="eleven_monolingual_v1"
@@ -66,11 +66,19 @@ def generate_speech_segment_tts(text, tts_pipeline, tts_lock, voice='bf_isabella
             from elevenlabs.client import ElevenLabs
             client = ElevenLabs(api_key="sk_9739f15bbe43d93268abcba00d20ab63973945a02a36723a")
             
-            audio_bytes = client.text_to_speech.convert(
+            audio_generator = client.text_to_speech.convert(
                 voice_id=elevenlabs_voice,
                 text=text,
                 model_id="eleven_monolingual_v1"
             )
+        
+        # Collect audio data from generator
+        audio_chunks = []
+        for chunk in audio_generator:
+            audio_chunks.append(chunk)
+        
+        # Combine all chunks
+        audio_bytes = b''.join(audio_chunks)
         
         print(f"✅ ElevenLabs generated {len(audio_bytes)} bytes for: {text[:50]}...")
         return audio_bytes
