@@ -2,13 +2,11 @@
 Utility functions for audio processing.
 These functions are called by the routes defined in main.py.
 """
-
 import numpy as np
 from io import BytesIO
 from base64 import b64decode
 import soundfile as sf
 import resampy
-
 from models.neurosync.generate_face_shapes import generate_facial_data_from_bytes
 
 def trim_and_fade(audio, sample_rate, threshold=0.01, fade_duration=0.0, padding_duration=0.1):
@@ -16,13 +14,10 @@ def trim_and_fade(audio, sample_rate, threshold=0.01, fade_duration=0.0, padding
     above_threshold = np.where(np.abs(audio) > threshold)[0]
     if above_threshold.size == 0:
         return audio
-
     padding_samples = int(padding_duration * sample_rate)
     start_idx = max(above_threshold[0] - padding_samples, 0)
-
     desired_silence_samples = int(0.2 * sample_rate)
     trailing_start = above_threshold[-1] + 1
-
     # Count contiguous silent samples after the trailing_start
     available_silence_samples = 0
     for i in range(trailing_start, len(audio)):
@@ -30,60 +25,58 @@ def trim_and_fade(audio, sample_rate, threshold=0.01, fade_duration=0.0, padding
             available_silence_samples += 1
         else:
             break
-
     silence_samples_to_include = min(desired_silence_samples, available_silence_samples)
     end_idx = trailing_start + silence_samples_to_include
-
     trimmed_audio = audio[start_idx:end_idx]
-
-
     if fade_duration > 0:
         fade_samples = int(fade_duration * sample_rate)
         fade_samples = min(fade_samples, len(trimmed_audio))  # Ensure fade_samples is not longer than the trimmed_audio
         fade_in = np.linspace(0, 1, fade_samples)
         trimmed_audio[:fade_samples] *= fade_in
-
     return trimmed_audio
 
-
-def generate_speech_segment_tts(text, tts_pipeline=None, tts_lock=None, voice="af_heart"):
+def generate_speech_segment_tts(text, tts_pipeline, tts_lock, voice='bf_isabella'):
     """
-    Generate speech using ElevenLabs TTS instead of Kokoro
+    Generate a speech segment using ElevenLabs TTS.
     """
     try:
-        from elevenlabs import generate, set_api_key
-        import io
-        import os
-        
-        # ElevenLabs API-Key aus Environment Variable
-        api_key = os.getenv("sk_9739f15bbe43d93268abcba00d20ab63973945a02a36723a")
-        if not api_key:
-            print("Warning: ELEVENLABS_API_KEY not set, using placeholder")
+        if not text.strip():
+            print("Input text is empty or whitespace.")
             return None
-            
-        set_api_key(api_key)
-        
-        # Voice-Mapping (ElevenLabs Voice IDs)
+
+        # Voice mapping for ElevenLabs
         voice_mapping = {
-            "af_heart": "21m00Tcm4TlvDq8ikWAM",  # Rachel
-            "bf_isabella": "EXAVITQu4vr4xnSDxMaL",  # Bella
-            "default": "21m00Tcm4TlvDq8ikWAM"
+            'bf_isabella': "EXAVITQu4vr4xnSDxMaL",  # Bella
+            'af_heart': "21m00Tcm4TlvDq8ikWAM",    # Rachel
+            'default': "21m00Tcm4TlvDq8ikWAM"
         }
         
-        elevenlabs_voice = voice_mapping.get(voice, voice_mapping["default"])
+        elevenlabs_voice = voice_mapping.get(voice, voice_mapping['default'])
         
-        # Audio mit ElevenLabs generieren
-        audio = generate(
-            text=text,
-            voice=elevenlabs_voice,
-            model="eleven_monolingual_v1"
-        )
+        # Use ElevenLabs client from tts_pipeline
+        if tts_pipeline and hasattr(tts_pipeline, 'generate'):
+            audio_bytes = tts_pipeline.generate(
+                text=text,
+                voice=elevenlabs_voice,
+                model="eleven_monolingual_v1"
+            )
+        else:
+            # Fallback: create new client
+            from elevenlabs.client import ElevenLabs
+            client = ElevenLabs(api_key="sk_9739f15bbe43d93268abcba00d20ab63973945a02a36723a")
+            audio_bytes = client.generate(
+                text=text,
+                voice=elevenlabs_voice,
+                model="eleven_monolingual_v1"
+            )
         
-        print(f"✅ ElevenLabs TTS generated audio for: {text[:50]}...")
-        return audio
-        
+        print(f"✅ ElevenLabs generated {len(audio_bytes)} bytes for: {text[:50]}...")
+        return audio_bytes
+
     except Exception as e:
-        print(f"❌ ElevenLabs TTS error: {e}")
+        print(f"❌ Error generating speech with ElevenLabs for text '{text}': {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 def process_transcription(audio_base64, return_timestamps, transgenerator):
