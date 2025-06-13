@@ -56,7 +56,7 @@ def generate_speech_segment_tts(text, tts_pipeline=None, tts_lock=None, voice="a
         import os
         
         # ElevenLabs API-Key aus Environment Variable
-        api_key = os.getenv("ELEVENLABS_API_KEY")
+        api_key = os.getenv("sk_9739f15bbe43d93268abcba00d20ab63973945a02a36723a")
         if not api_key:
             print("Warning: ELEVENLABS_API_KEY not set, using placeholder")
             return None
