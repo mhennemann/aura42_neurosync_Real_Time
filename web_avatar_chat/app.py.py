@@ -1,4 +1,4 @@
-﻿from flask import Flask, render_template, request, jsonify
+﻿from flask import Flask, render_template, request, jsonify, Response
 import requests
 import os
 
@@ -51,6 +51,35 @@ def synthesize_and_blendshapes():
             "status": "error", 
             "message": str(e)
         }), 500
+
+@app.route('/api/get_audio', methods=['POST'])
+def get_audio():
+    try:
+        data = request.get_json()
+        text = data.get('text', '')
+        
+        print(f"🎵 Getting audio for: {text}")
+        
+        # Audio von NeuroSync-Server holen
+        response = requests.post(
+            f"{NEUROSYNC_SERVER}/generate_speech",
+            json={"text": text},
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            # Audio-Daten direkt zurückgeben
+            return Response(
+                response.content,
+                mimetype="audio/wav",
+                headers={"Content-Disposition": "attachment; filename=speech.wav"}
+            )
+        else:
+            return jsonify({"error": "Audio generation failed"}), 500
+            
+    except Exception as e:
+        print(f"❌ Audio error: {e}")
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/transcribe', methods=['POST'])
 def transcribe():
