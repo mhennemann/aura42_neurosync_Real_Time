@@ -1,11 +1,13 @@
 ﻿from flask import Flask, render_template, request, jsonify, Response
 import requests
 import os
+import base64
 
 app = Flask(__name__)
 
 # NeuroSync Server URL
 NEUROSYNC_SERVER = "http://localhost:8000"
+NEUROSYNC_AUDIO_SERVER = "http://localhost:6969"
 
 # Voice-Mapping für ElevenLabs (mit Franzi als Standard)
 VOICE_MAPPING = {
@@ -121,25 +123,44 @@ def transcribe():
             
         audio_file = request.files['audio']
         
-        print(f"🎤 Transkribiere Audio: {audio_file.filename}")
+        # Audio zu base64 konvertieren
+        audio_data = audio_file.read()
+        audio_base64 = base64.b64encode(audio_data).decode('utf-8')
         
-        # An NeuroSync Transkriptions-API weiterleiten
-        files = {'audio': audio_file}
+        print(f"🎤 Transkribiere Audio: {len(audio_data)} bytes → base64: {len(audio_base64)} chars")
+        
+        # An NeuroSync Audio-App (Port 6969) senden
         response = requests.post(
-            f"{NEUROSYNC_SERVER}/transcribe", 
-            files=files,
+            f"{NEUROSYNC_AUDIO_SERVER}/transcribe",
+            json={
+                "audio_base64": audio_base64,
+                "return_timestamps": False
+            },
             timeout=30
         )
+        
+        print(f"🔊 Transcribe-Antwort: {response.status_code}")
         
         if response.status_code == 200:
             result = response.json()
             transcription = result.get('transcription', '')
             print(f"✅ Transkription: {transcription}")
-            return jsonify(result)
+            return jsonify({
+                "transcription": transcription,
+                "status": "success"
+            })
         else:
             print(f"❌ Transkription fehlgeschlagen: {response.status_code}")
+            try:
+                error_detail = response.json()
+                print(f"❌ Fehler-Details: {error_detail}")
+            except:
+                print(f"❌ Raw Response: {response.text}")
             return jsonify({"error": "Transkription fehlgeschlagen"}), 500
         
+    except requests.exceptions.ConnectionError:
+        print("❌ Verbindung zum NeuroSync Audio-Server nicht möglich")
+        return jsonify({"error": "Verbindung zum NeuroSync Audio-Server nicht möglich"}), 500
     except Exception as e:
         print(f"❌ Transkriptions-Fehler: {e}")
         return jsonify({"error": str(e)}), 500
@@ -151,17 +172,27 @@ def health():
         response = requests.get(f"{NEUROSYNC_SERVER}/", timeout=5)
         neurosync_status = "online" if response.status_code == 200 else "offline"
         
+        # Audio-Server prüfen
+        try:
+            audio_response = requests.get(f"{NEUROSYNC_AUDIO_SERVER}/", timeout=5)
+            audio_status = "online" if audio_response.status_code == 200 else "offline"
+        except:
+            audio_status = "offline"
+        
         # Voice-Mapping-Info hinzufügen
         available_voices = list(VOICE_MAPPING.keys())
         
     except Exception as e:
         neurosync_status = "offline"
+        audio_status = "offline"
         available_voices = []
     
     return jsonify({
         "status": "Web-Interface läuft",
         "neurosync_server": neurosync_status,
+        "audio_server": audio_status,
         "server_url": NEUROSYNC_SERVER,
+        "audio_server_url": NEUROSYNC_AUDIO_SERVER,
         "available_voices": available_voices,
         "default_voice": "franzi",
         "voice_mapping": VOICE_MAPPING
@@ -208,7 +239,11 @@ def set_voice():
 if __name__ == '__main__':
     print("🚀 NeuroSync Web-Interface wird gestartet...")
     print("🎯 NeuroSync Server:", NEUROSYNC_SERVER)
+    print("🎤 NeuroSync Audio Server:", NEUROSYNC_AUDIO_SERVER)
     print("🔊 Standard-Stimme: Franzi (Deutsche TTS)")
-    print("🌐 Web-Interface verfügbar unter: http://148.251.21.122:9000")
+    print("🌐 Web-Interface verfügbar unter:")
+    print("   - Lokal: http://127.0.0.1:9000")
+    print("   - HTTPS: https://neurosync.aura42.de")
+    print("   - HTTPS: https://avatar.aura42.de")
     print("📋 Verfügbare Stimmen:", list(VOICE_MAPPING.keys()))
-    app.run(host='0.0.0.0', port=9000, debug=True)
+    app.run(host='127.0.0.1', port=9000, debug=False)

@@ -48,7 +48,8 @@ def generate_speech_segment_tts(text, tts_pipeline, tts_lock, voice='bf_isabella
         voice_mapping = {
             'bf_isabella': "EXAVITQu4vr4xnSDxMaL",  # Bella
             'af_heart': "21m00Tcm4TlvDq8ikWAM",    # Rachel
-            'default': "21m00Tcm4TlvDq8ikWAM"
+            'franzi': "NX39CipaoYitJ3sMwH5I",      # Deutsche Franzi ← NEU!
+            'default': "NX39CipaoYitJ3sMwH5I"       # Standard: Franzi ← GEÄNDERT!
         }
         
         elevenlabs_voice = voice_mapping.get(voice, voice_mapping['default'])
