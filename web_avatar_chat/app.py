@@ -1,7 +1,6 @@
 ﻿from flask import Flask, render_template, request, jsonify, Response
 import requests
 import os
-import base64
 
 app = Flask(__name__)
 
@@ -122,20 +121,17 @@ def transcribe():
             return jsonify({"error": "Keine Audio-Datei"}), 400
             
         audio_file = request.files['audio']
-        
-        # Audio zu base64 konvertieren
         audio_data = audio_file.read()
-        audio_base64 = base64.b64encode(audio_data).decode('utf-8')
         
-        print(f"🎤 Transkribiere Audio: {len(audio_data)} bytes → base64: {len(audio_base64)} chars")
+        print(f"🎤 Transkribiere Audio: {len(audio_data)} bytes, Typ: {audio_file.content_type}")
         
-        # An NeuroSync Audio-App (Port 6969) senden
+        # Audio-File direkt an NeuroSync Audio-Server senden
+        audio_file.seek(0)  # Reset file pointer
+        files = {'audio': (audio_file.filename, audio_file, audio_file.content_type)}
+        
         response = requests.post(
             f"{NEUROSYNC_AUDIO_SERVER}/transcribe",
-            json={
-                "audio_base64": audio_base64,
-                "return_timestamps": False
-            },
+            files=files,
             timeout=30
         )
         
