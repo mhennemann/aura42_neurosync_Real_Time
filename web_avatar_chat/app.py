@@ -131,13 +131,13 @@ def transcribe():
         }
         
         data = {
-            'model': 'scribe_v1',
-            'language_code': 'de',  # Deutsch
+            'model_id': 'scribe_v1',  # KORRIGIERT: model_id statt model
+            'language_code': 'de',    # Deutsch
             'timestamp_granularity': 'word'
         }
         
         headers = {
-            'xi-api-key': 'sk_9739f15bbe43d93268abcba00d20ab63973945a02a36723a'  # Ihre ElevenLabs API Key
+            'xi-api-key': 'sk_9739f15bbe43d93268abcba00d20ab63973945a02a36723a'
         }
         
         response = requests.post(
