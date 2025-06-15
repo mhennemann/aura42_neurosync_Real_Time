@@ -123,24 +123,32 @@ def transcribe():
         audio_file = request.files['audio']
         audio_data = audio_file.read()
         
-        # Audio zu base64 konvertieren (wie ursprünglich erwartet)
-        import base64
-        audio_base64 = base64.b64encode(audio_data).decode('utf-8')
+        print(f"🎤 Transkribiere Audio mit ElevenLabs: {len(audio_data)} bytes")
         
-        print(f"🎤 Transkribiere Audio: {len(audio_data)} bytes → base64: {len(audio_base64)} chars")
+        # ElevenLabs Speech-to-Text API verwenden
+        files = {
+            'file': ('audio.wav', audio_data, 'audio/wav')
+        }
         
-        # JSON mit audio_base64 an NeuroSync Audio-Server senden
+        data = {
+            'model': 'scribe_v1',
+            'language_code': 'de',  # Deutsch
+            'timestamp_granularity': 'word'
+        }
+        
+        headers = {
+            'xi-api-key': 'sk_9739f15bbe43d93268abcba00d20ab63973945a02a36723a'  # Ihre ElevenLabs API Key
+        }
+        
         response = requests.post(
-            f"{NEUROSYNC_AUDIO_SERVER}/transcribe",
-            json={
-                "audio_base64": audio_base64,
-                "return_timestamps": False
-            },
-            headers={'Content-Type': 'application/json'},
+            'https://api.elevenlabs.io/v1/speech-to-text',
+            files=files,
+            data=data,
+            headers=headers,
             timeout=30
         )
         
-        print(f"🔊 Transcribe-Antwort: {response.status_code}")
+        print(f"🔊 ElevenLabs STT Antwort: {response.status_code}")
         
         if response.status_code == 200:
             result = response.json()
@@ -151,12 +159,8 @@ def transcribe():
                 "status": "success"
             })
         else:
-            print(f"❌ Transkription fehlgeschlagen: {response.status_code}")
-            try:
-                error_detail = response.json()
-                print(f"❌ Fehler-Details: {error_detail}")
-            except:
-                print(f"❌ Raw Response: {response.text}")
+            print(f"❌ ElevenLabs STT fehlgeschlagen: {response.status_code}")
+            print(f"❌ Response: {response.text}")
             return jsonify({"error": "Transkription fehlgeschlagen"}), 500
         
     except Exception as e:
