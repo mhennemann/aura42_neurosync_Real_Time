@@ -123,15 +123,20 @@ def transcribe():
         audio_file = request.files['audio']
         audio_data = audio_file.read()
         
-        print(f"🎤 Transkribiere Audio: {len(audio_data)} bytes, Typ: {audio_file.content_type}")
+        # Audio zu base64 konvertieren (wie ursprünglich erwartet)
+        import base64
+        audio_base64 = base64.b64encode(audio_data).decode('utf-8')
         
-        # Audio-File direkt an NeuroSync Audio-Server senden
-        audio_file.seek(0)  # Reset file pointer
-        files = {'audio': (audio_file.filename, audio_file, audio_file.content_type)}
+        print(f"🎤 Transkribiere Audio: {len(audio_data)} bytes → base64: {len(audio_base64)} chars")
         
+        # JSON mit audio_base64 an NeuroSync Audio-Server senden
         response = requests.post(
             f"{NEUROSYNC_AUDIO_SERVER}/transcribe",
-            files=files,
+            json={
+                "audio_base64": audio_base64,
+                "return_timestamps": False
+            },
+            headers={'Content-Type': 'application/json'},
             timeout=30
         )
         
@@ -154,9 +159,6 @@ def transcribe():
                 print(f"❌ Raw Response: {response.text}")
             return jsonify({"error": "Transkription fehlgeschlagen"}), 500
         
-    except requests.exceptions.ConnectionError:
-        print("❌ Verbindung zum NeuroSync Audio-Server nicht möglich")
-        return jsonify({"error": "Verbindung zum NeuroSync Audio-Server nicht möglich"}), 500
     except Exception as e:
         print(f"❌ Transkriptions-Fehler: {e}")
         return jsonify({"error": str(e)}), 500
