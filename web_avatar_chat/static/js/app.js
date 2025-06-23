@@ -2,7 +2,12 @@
 let mediaRecorder;
 let audioChunks = [];
 
-// Text-to-Avatar function with Franzi Audio
+// URL für verschiedene Umgebungen
+const PIXEL_STREAM_URL = window.location.hostname === 'localhost'
+    ? 'http://148.251.21.122/'
+    : 'https://pixel.aura42.de/';
+
+// Text-to-Avatar function with Franzi Audio (KORRIGIERT)
 async function sendMessage() {
     const textInput = document.getElementById('textInput');
     const text = textInput.value.trim();
@@ -12,6 +17,9 @@ async function sendMessage() {
     addMessage('user', text);
     textInput.value = '';
     setStatus('Verarbeitung mit ElevenLabs + NeuroSync...', 'processing');
+
+    // Avatar Animation Hinweis
+    showAvatarActivity();
 
     try {
         // 1. Text an NeuroSync senden (für Blendshapes)
@@ -63,6 +71,53 @@ async function sendMessage() {
         console.error('Fehler:', error);
         setStatus('Fehler: ' + error.message, 'error');
         addMessage('system', '❌ Fehler: ' + error.message);
+    }
+}
+
+// Pixel Stream Controls
+function toggleStream() {
+    const iframe = document.getElementById('pixelStreamIframe');
+    const container = iframe.parentElement;
+
+    if (iframe.style.display === 'none') {
+        iframe.style.display = 'block';
+        container.classList.remove('loading');
+        console.log('🎮 Pixel Stream aktiviert');
+    } else {
+        iframe.style.display = 'none';
+        container.classList.add('loading');
+        console.log('🎮 Pixel Stream deaktiviert');
+    }
+}
+
+function resetStream() {
+    const iframe = document.getElementById('pixelStreamIframe');
+    iframe.src = iframe.src; // Reload iframe
+    console.log('🔄 Pixel Stream zurückgesetzt');
+}
+
+function showAvatarActivity() {
+    const container = document.querySelector('.pixel-stream-container');
+    if (container) {
+        container.style.border = '2px solid #00aaff';
+
+        setTimeout(() => {
+            container.style.border = '2px solid #444';
+        }, 3000);
+    }
+}
+
+// Responsive iframe anpassen
+function adjustStreamQuality() {
+    const iframe = document.getElementById('pixelStreamIframe');
+    if (iframe) {
+        const width = iframe.offsetWidth;
+
+        if (width < 600) {
+            iframe.src = PIXEL_STREAM_URL + '?quality=low';
+        } else {
+            iframe.src = PIXEL_STREAM_URL + '?quality=high';
+        }
     }
 }
 
@@ -143,6 +198,9 @@ async function sendAudio(audioBlob) {
 // Helper function for audio processing with Franzi
 async function sendMessageWithText(text) {
     setStatus('Verarbeitung mit ElevenLabs + NeuroSync...', 'processing');
+
+    // Avatar Animation Hinweis
+    showAvatarActivity();
 
     try {
         // An NeuroSync senden
