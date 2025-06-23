@@ -258,4 +258,4 @@ if __name__ == '__main__':
     print("   - HTTPS: https://neurosync.aura42.de")
     print("   - HTTPS: https://avatar.aura42.de")
     print("📋 Verfügbare Stimmen:", list(VOICE_MAPPING.keys()))
-    app.run(host='127.0.0.1', port=9000, debug=False)
+    app.run(host='0.0.0.0', port=9000, debug=False)
