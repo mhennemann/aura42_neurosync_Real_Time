@@ -1,4 +1,31 @@
-﻿* {
+﻿/* NeuroSync Avatar Chat - Custom Theme mit #7007E7 (Lila) und #F43098 (Pink) */
+
+:root {
+    /* Ihre Custom Farbpalette */
+    --primary-pink: #F43098; /* Neues Pink */
+    --primary-purple: #7007E7; /* Neues Lila */
+    --accent-pink: #FF6BB3; /* Helles Pink für Hover */
+    --accent-purple: #9A4AE2; /* Helles Lila für Hover */
+    /* Dark Mode Graustufen */
+    --bg-primary: #1a1a1a; /* Haupt-Hintergrund */
+    --bg-secondary: #2d2d2d; /* Sekundärer Hintergrund */
+    --bg-tertiary: #2c2c2c; /* Panels/Cards */
+    --bg-quaternary: #333333; /* Input-Felder */
+    /* Text Farben */
+    --text-primary: #FFFFFF; /* Haupttext (weiß) */
+    --text-secondary: #888888; /* Sekundärtext (hellgrau) */
+    --text-muted: #666666; /* Gedämpfter Text */
+    /* Status Farben */
+    --success: #66ff66;
+    --warning: #F43098; /* Orange ersetzt durch Pink */
+    --error: #F43098; /* Rot ersetzt durch Pink */
+    --info: #7007E7; /* Blau ersetzt durch Lila */
+    /* Schatten und Borders */
+    --shadow-soft: 0 5px 15px rgba(244, 48, 152, 0.4);
+    --border-color: #444444;
+}
+
+* {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
@@ -6,8 +33,8 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-    color: white;
+    background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+    color: var(--text-primary);
     display: flex;
     height: 100vh;
     overflow: hidden;
@@ -20,18 +47,18 @@ body {
     padding: 30px;
     display: flex;
     flex-direction: column;
-    border-right: 1px solid #444;
-    box-shadow: 2px 0 20px rgba(0, 0, 0, 0.3);
+    border-right: 1px solid var(--border-color);
+    box-shadow: 2px 0 20px rgba(244, 48, 152, 0.2);
 }
 
 /* Avatar Panel - VOLLBILD UPDATE */
 .avatar-panel {
     flex: 1;
-    background: #000; /* Schwarzer Hintergrund für besseren Kontrast */
+    background: #000;
     position: relative;
     display: flex;
     flex-direction: column;
-    padding: 0; /* Kein Padding für Vollbild */
+    padding: 0;
     height: 100vh;
     overflow: hidden;
 }
@@ -46,14 +73,14 @@ body {
     padding: 8px 12px;
     border-radius: 5px;
     margin: 0;
-    border: none;
+    border: 1px solid var(--primary-purple);
     backdrop-filter: blur(5px);
 }
 
     .avatar-header h2 {
         font-size: 14px;
         margin: 0;
-        background: linear-gradient(45deg, #0066cc, #00aaff);
+        background: linear-gradient(45deg, var(--primary-purple), var(--accent-purple));
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
@@ -61,7 +88,7 @@ body {
 
     .avatar-header p {
         font-size: 10px;
-        color: #888;
+        color: var(--text-secondary);
         margin: 0;
     }
 
@@ -69,13 +96,13 @@ body {
 .pixel-stream-container {
     flex: 1;
     background: #000;
-    border-radius: 0; /* Keine Rundungen */
+    border-radius: 0;
     overflow: hidden;
-    border: none; /* Kein Rahmen */
-    margin: 0; /* Keine Ränder */
+    border: none;
+    margin: 0;
     position: relative;
-    height: 100vh; /* Komplette Höhe */
-    width: 100%; /* Komplette Breite */
+    height: 100vh;
+    width: 100%;
 }
 
     .pixel-stream-container iframe {
@@ -101,18 +128,20 @@ body {
     .avatar-controls button {
         padding: 8px 12px;
         font-size: 11px;
-        background: rgba(0, 0, 0, 0.8);
-        color: white;
-        border: 1px solid #444;
+        background: linear-gradient(135deg, var(--primary-purple), var(--accent-purple));
+        color: var(--text-primary);
+        border: 1px solid var(--primary-purple);
         border-radius: 4px;
         backdrop-filter: blur(5px);
         transition: all 0.3s ease;
+        cursor: pointer;
     }
 
         .avatar-controls button:hover {
-            background: rgba(0, 102, 204, 0.8);
-            border-color: #0066cc;
+            background: linear-gradient(135deg, var(--accent-purple), var(--primary-purple));
+            border-color: var(--accent-purple);
             transform: translateY(-1px);
+            box-shadow: var(--shadow-soft);
         }
 
 /* Loading State */
@@ -122,39 +151,62 @@ body {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    color: #888;
+    color: var(--text-secondary);
     font-size: 16px;
     z-index: 10;
     background: rgba(0, 0, 0, 0.8);
     padding: 10px 20px;
     border-radius: 5px;
+    border: 1px solid var(--primary-pink);
 }
 
+/* Header mit Logo */
 .header {
     text-align: center;
     margin-bottom: 30px;
-    border-bottom: 2px solid #0066cc;
+    border-bottom: 2px solid var(--primary-pink);
     padding-bottom: 20px;
+    position: relative;
 }
+
+    .header .logo {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        background: linear-gradient(135deg, var(--primary-pink), var(--accent-pink));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        font-weight: bold;
+        color: white;
+        border: 2px solid var(--primary-purple);
+        box-shadow: 0 4px 12px rgba(244, 48, 152, 0.3);
+    }
 
     .header h1 {
         font-size: 24px;
         margin-bottom: 8px;
-        background: linear-gradient(45deg, #0066cc, #00aaff);
+        background: linear-gradient(45deg, var(--primary-pink), var(--accent-pink));
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
+        margin-left: 50px; /* Platz für Logo */
     }
 
     .header p {
         font-size: 14px;
-        color: #888;
+        color: var(--text-secondary);
+        margin-left: 50px; /* Platz für Logo */
     }
 
 .chat-messages {
     flex: 1;
     overflow-y: auto;
-    border: 1px solid #444;
+    border: 1px solid var(--border-color);
     padding: 15px;
     margin-bottom: 25px;
     border-radius: 10px;
@@ -182,18 +234,26 @@ body {
 }
 
 .user-message {
-    background: linear-gradient(135deg, #0066cc, #0052a3);
+    background: linear-gradient(135deg, var(--primary-purple), var(--accent-purple));
     text-align: right;
     margin-left: 20px;
+    color: var(--text-primary);
 }
 
 .avatar-message {
-    background: linear-gradient(135deg, #444, #555);
+    background: linear-gradient(135deg, var(--bg-quaternary), #555);
     margin-right: 20px;
+    border-left: 3px solid var(--primary-pink);
+}
+
+.chatgpt-response {
+    background: linear-gradient(135deg, var(--bg-quaternary), #555);
+    margin-right: 20px;
+    border-left: 3px solid var(--primary-pink);
 }
 
 .system-message {
-    background: linear-gradient(135deg, #cc6600, #aa5500);
+    background: linear-gradient(135deg, var(--primary-pink), var(--accent-pink));
     margin: 0 10px;
     text-align: center;
 }
@@ -203,6 +263,7 @@ body {
     margin-bottom: 5px;
     font-size: 12px;
     opacity: 0.8;
+    color: var(--primary-pink);
 }
 
 .message small {
@@ -210,6 +271,7 @@ body {
     opacity: 0.6;
     display: block;
     margin-top: 5px;
+    color: var(--text-muted);
 }
 
 .input-area {
@@ -221,26 +283,30 @@ body {
 #textInput {
     flex: 1;
     padding: 15px;
-    border: 2px solid #444;
+    border: 2px solid var(--border-color);
     border-radius: 8px;
     background: rgba(51, 51, 51, 0.8);
-    color: white;
+    color: var(--text-primary);
     font-size: 14px;
     transition: border-color 0.3s ease;
 }
 
     #textInput:focus {
         outline: none;
-        border-color: #0066cc;
-        box-shadow: 0 0 10px rgba(0, 102, 204, 0.3);
+        border-color: var(--primary-pink);
+        box-shadow: 0 0 10px rgba(244, 48, 152, 0.3);
+    }
+
+    #textInput::placeholder {
+        color: var(--text-muted);
     }
 
 button {
     padding: 15px 25px;
     border: none;
     border-radius: 8px;
-    background: linear-gradient(135deg, #0066cc, #0052a3);
-    color: white;
+    background: linear-gradient(135deg, var(--primary-pink), var(--accent-pink));
+    color: var(--text-primary);
     cursor: pointer;
     font-weight: bold;
     transition: all 0.3s ease;
@@ -248,9 +314,9 @@ button {
 }
 
     button:hover {
-        background: linear-gradient(135deg, #0052a3, #003d7a);
+        background: linear-gradient(135deg, var(--accent-pink), var(--primary-pink));
         transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(0, 102, 204, 0.4);
+        box-shadow: var(--shadow-soft);
     }
 
     button:active {
@@ -258,74 +324,89 @@ button {
     }
 
     button:disabled {
-        background: #666;
+        background: var(--text-muted);
         cursor: not-allowed;
         transform: none;
         box-shadow: none;
     }
 
 .mic-button {
-    background: linear-gradient(135deg, #cc0000, #a30000);
+    background: linear-gradient(135deg, var(--primary-pink), var(--accent-pink));
     min-width: 60px;
 }
 
     .mic-button:hover {
-        background: linear-gradient(135deg, #a30000, #7a0000);
+        background: linear-gradient(135deg, var(--accent-pink), var(--primary-pink));
     }
 
     .mic-button.recording {
-        background: linear-gradient(135deg, #ff3333, #cc0000);
+        background: linear-gradient(135deg, #ff3333, var(--primary-pink));
         animation: pulse 1s infinite;
     }
 
 @keyframes pulse {
     0% {
         opacity: 1;
-        box-shadow: 0 0 10px rgba(255, 51, 51, 0.5);
+        box-shadow: 0 0 10px rgba(244, 48, 152, 0.5);
     }
 
     50% {
         opacity: 0.8;
-        box-shadow: 0 0 20px rgba(255, 51, 51, 0.8);
+        box-shadow: 0 0 20px rgba(244, 48, 152, 0.8);
     }
 
     100% {
         opacity: 1;
-        box-shadow: 0 0 10px rgba(255, 51, 51, 0.5);
+        box-shadow: 0 0 10px rgba(244, 48, 152, 0.5);
     }
 }
 
 .status {
     font-size: 12px;
-    color: #888;
+    color: var(--text-secondary);
     text-align: center;
     padding: 10px;
     background: rgba(68, 68, 68, 0.3);
     border-radius: 5px;
+    border: 1px solid var(--border-color);
 }
 
     .status.processing {
-        color: #00aaff;
+        color: var(--primary-pink);
         animation: pulse 1s infinite;
+        border-color: var(--primary-pink);
+    }
+
+    .status.speaking {
+        color: var(--primary-purple);
+        animation: pulse 1s infinite;
+        border-color: var(--primary-purple);
     }
 
     .status.error {
-        color: #ff6666;
+        color: var(--primary-pink);
+        border-color: var(--primary-pink);
     }
 
     .status.success {
-        color: #66ff66;
+        color: var(--success);
+        border-color: var(--success);
+    }
+
+    .status.ready {
+        color: var(--success);
+        border-color: var(--success);
     }
 
 .avatar-display {
     text-align: center;
-    color: #888;
+    color: var(--text-secondary);
 }
 
     .avatar-display h2 {
         font-size: 48px;
         margin-bottom: 20px;
-        background: linear-gradient(45deg, #0066cc, #00aaff);
+        background: linear-gradient(45deg, var(--primary-pink), var(--accent-pink));
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
@@ -349,7 +430,12 @@ button {
 
     .controls button {
         flex: 1;
+        background: linear-gradient(135deg, var(--primary-purple), var(--accent-purple));
     }
+
+        .controls button:hover {
+            background: linear-gradient(135deg, var(--accent-purple), var(--primary-purple));
+        }
 
 /* Scrollbar styling */
 .chat-messages::-webkit-scrollbar {
@@ -362,52 +448,115 @@ button {
 }
 
 .chat-messages::-webkit-scrollbar-thumb {
-    background: #0066cc;
+    background: var(--primary-pink);
     border-radius: 3px;
 }
 
     .chat-messages::-webkit-scrollbar-thumb:hover {
-        background: #0052a3;
+        background: var(--accent-pink);
     }
 
-/* In static/css/style.css hinzufügen */
+/* Sync Controls mit neuen Farben */
 .sync-controls {
-    background: #2c3e50;
+    background: var(--bg-tertiary);
     padding: 10px;
     margin: 10px 0;
     border-radius: 8px;
     text-align: center;
+    border: 1px solid var(--border-color);
 }
 
     .sync-controls label {
-        color: #ecf0f1;
+        color: var(--text-primary);
         font-size: 14px;
         margin-right: 10px;
+        font-weight: 600;
     }
 
 #audioDelaySlider {
     width: 150px;
     margin: 0 10px;
+    height: 6px;
+    background: var(--bg-quaternary);
+    border-radius: 3px;
+    outline: none;
+    -webkit-appearance: none;
 }
 
+    #audioDelaySlider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 18px;
+        height: 18px;
+        background: linear-gradient(135deg, var(--primary-pink), var(--accent-pink));
+        border-radius: 50%;
+        cursor: pointer;
+        box-shadow: 0 2px 6px rgba(244, 48, 152, 0.4);
+        transition: all 0.3s ease;
+    }
+
+        #audioDelaySlider::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            box-shadow: 0 4px 12px rgba(244, 48, 152, 0.6);
+        }
+
+    #audioDelaySlider::-moz-range-thumb {
+        width: 18px;
+        height: 18px;
+        background: linear-gradient(135deg, var(--primary-pink), var(--accent-pink));
+        border-radius: 50%;
+        cursor: pointer;
+        border: none;
+        box-shadow: 0 2px 6px rgba(244, 48, 152, 0.4);
+    }
+
 #delayValue {
-    color: #3498db;
+    color: var(--primary-pink);
     font-weight: bold;
     min-width: 50px;
     display: inline-block;
+    background: var(--bg-quaternary);
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--primary-pink);
 }
 
 #testSyncBtn {
-    background: #e74c3c;
-    color: white;
+    background: linear-gradient(135deg, var(--primary-pink), var(--accent-pink));
+    color: var(--text-primary);
     border: none;
     padding: 5px 10px;
     border-radius: 5px;
     margin-left: 10px;
     cursor: pointer;
     font-size: 12px;
+    transition: all 0.3s ease;
 }
 
     #testSyncBtn:hover {
-        background: #c0392b;
+        background: linear-gradient(135deg, var(--accent-pink), var(--primary-pink));
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(244, 48, 152, 0.4);
     }
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .chat-panel {
+        width: 100%;
+    }
+
+    .avatar-panel {
+        display: none;
+    }
+
+    .header h1,
+    .header p {
+        margin-left: 0;
+        text-align: center;
+    }
+
+    .header .logo {
+        position: relative;
+        margin: 0 auto 10px auto;
+    }
+}
