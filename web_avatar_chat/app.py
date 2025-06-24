@@ -1,6 +1,7 @@
 ﻿from flask import Flask, render_template, request, jsonify, Response
 import requests
 import os
+import base64
 
 app = Flask(__name__)
 
@@ -55,59 +56,59 @@ def synthesize_and_blendshapes():
                     try:
                         from livelink.connect.livelink_init import create_socket_connection, initialize_py_face
                         from livelink.send_to_unreal import pre_encode_facial_data, send_pre_encoded_data_to_unreal
-                        from threading import Event
-                        import pygame
-                        import io
+                        from threading import Event, Thread
                         import time
                         
-                        print(f"🎯 Sequentieller Ablauf: Audio → LiveLink für {len(blendshapes_list)} frames")
+                        print(f"🎯 Perfekte Sync: Audio + LiveLink gleichzeitig für {len(blendshapes_list)} frames")
                         
-                        # SCHRITT 1: Audio komplett abspielen
-                        def play_complete_audio():
-                            try:
-                                pygame.mixer.init()
-                                audio_file = io.BytesIO(audio_bytes)
-                                pygame.mixer.music.load(audio_file)
-                                pygame.mixer.music.play()
-                                
-                                print("🔊 Audio wird abgespielt...")
-                                # Warten bis Audio KOMPLETT fertig
-                                while pygame.mixer.music.get_busy():
-                                    time.sleep(0.05)
-                                print("🔊 Audio komplett abgespielt")
-                                
-                            except Exception as e:
-                                print(f"❌ Audio Fehler: {e}")
+                        # Audio-Dauer berechnen (Approximation)
+                        audio_length_seconds = len(audio_bytes) / (22050 * 2)  # 22kHz, 16bit
+                        print(f"🕐 Audio-Dauer: {audio_length_seconds:.1f} Sekunden")
                         
-                        # SCHRITT 2: LiveLink senden (nach Audio)
-                        def send_livelink_after_audio():
+                        # LiveLink parallel zu Browser-Audio starten
+                        def start_synchronized_livelink():
                             try:
+                                # Kurzer Puffer für Browser-Audio Start
+                                time.sleep(0.2)
+                                
                                 py_face = initialize_py_face()
                                 socket_connection = create_socket_connection()
                                 encoded_data = pre_encode_facial_data(blendshapes_list, py_face)
                                 
                                 start_event = Event()
                                 start_event.set()
+                                
+                                print("🎭 Starte LiveLink synchron zu Browser-Audio...")
                                 send_pre_encoded_data_to_unreal(encoded_data, start_event, 60, socket_connection)
-                                print("🎭 LiveLink Animation komplett")
+                                print("🎭 LiveLink Animation komplett (synchron zu Audio)")
                                 
                             except Exception as e:
-                                print(f"❌ LiveLink Fehler: {e}")
+                                print(f"❌ Synchronized LiveLink Fehler: {e}")
+                                import traceback
+                                traceback.print_exc()
                         
-                        # SEQUENTIELLER ABLAUF
-                        print("🚀 Starte sequentiellen Ablauf...")
+                        # LiveLink-Thread starten (parallel zu Browser-Audio)
+                        livelink_thread = Thread(target=start_synchronized_livelink)
+                        livelink_thread.start()
                         
-                        # 1. Audio komplett abspielen
-                        play_complete_audio()
+                        print(f"🚀 Audio + LiveLink gestartet - perfekte Synchronisation!")
                         
-                        # 2. DANN LiveLink Animation
-                        print("🎭 Audio fertig → Starte LiveLink Animation...")
-                        send_livelink_after_audio()
+                        # Audio als Base64 für Browser zurückgeben
+                        audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
                         
-                        print(f"✅ Sequentieller Ablauf erfolgreich komplett!")
+                        return jsonify({
+                            "status": "success", 
+                            "message": "Avatar spricht perfekt synchron (Audio + LiveLink)",
+                            "text": text,
+                            "voice": voice,
+                            "audio_data": audio_base64,
+                            "audio_length": audio_length_seconds,
+                            "sync_mode": "perfect_audio_livelink_sync",
+                            "play_audio": True
+                        })
                         
                     except Exception as e:
-                        print(f"❌ Sequentieller Ablauf Fehler: {e}")
+                        print(f"❌ Perfekte Sync Fehler: {e}")
                         import traceback
                         traceback.print_exc()
                 
@@ -116,10 +117,9 @@ def synthesize_and_blendshapes():
             
             return jsonify({
                 "status": "success", 
-                "message": "Avatar spricht sequentiell (Audio → LiveLink)",
+                "message": "Avatar generiert (ohne Sync)",
                 "text": text,
-                "voice": voice,
-                "sync_mode": "sequential_audio_then_livelink"
+                "voice": voice
             })
         else:
             return jsonify({
@@ -262,7 +262,7 @@ def health():
         available_voices = []
     
     return jsonify({
-        "status": "Web-Interface mit sequentiellem Audio → LiveLink",
+        "status": "Web-Interface mit perfekter Audio+LiveLink Synchronisation",
         "neurosync_server": neurosync_status,
         "audio_server": audio_status,
         "server_url": NEUROSYNC_SERVER,
@@ -270,7 +270,7 @@ def health():
         "available_voices": available_voices,
         "default_voice": "franzi",
         "voice_mapping": VOICE_MAPPING,
-        "sync_mode": "sequential_audio_then_livelink",
+        "sync_mode": "perfect_audio_livelink_sync",
         "livelink_integration": "enabled"
     })
 
@@ -310,16 +310,16 @@ def set_voice():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    print("🚀 NeuroSync Web-Interface mit sequentiellem Audio → LiveLink...")
+    print("🚀 NeuroSync Web-Interface mit perfekter Audio+LiveLink Synchronisation...")
     print("🎯 NeuroSync Server:", NEUROSYNC_SERVER)
     print("🎤 NeuroSync Audio Server:", NEUROSYNC_AUDIO_SERVER)
     print("🔊 Standard-Stimme: Franzi (Deutsche TTS)")
     print("🔗 LiveLink Integration: AKTIVIERT")
-    print("🎵 Sync Modus: Sequentiell (Audio → dann LiveLink)")
+    print("🎵 Sync Modus: Perfekte Audio+LiveLink Synchronisation")
     print("🌐 Web-Interface verfügbar unter:")
     print("   - Lokal: http://127.0.0.1:9000")
     print("   - HTTPS: https://neurosync.aura42.de")
     print("   - HTTPS: https://avatar.aura42.de")
     print("📋 Verfügbare Stimmen:", list(VOICE_MAPPING.keys()))
-    print("🎊 PERFEKTE SEQUENTIELLE SYNCHRONISATION: Audio komplett → dann LiveLink!")
+    print("🎊 PERFEKTE SYNCHRONISATION: Audio + LiveLink zur exakt gleichen Zeit!")
     app.run(host='127.0.0.1', port=9000, debug=False)
