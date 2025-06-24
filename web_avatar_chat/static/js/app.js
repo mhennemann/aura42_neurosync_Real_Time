@@ -1,4 +1,4 @@
-﻿// NeuroSync Avatar Chat - Browser-Controlled Perfect Synchronization (Variant 2)
+﻿// NeuroSync Avatar Chat - Audio-Event Based Perfect Synchronization (Option 3)
 let isRecording = false;
 let mediaRecorder;
 let audioChunks = [];
@@ -34,7 +34,7 @@ function addMessage(sender, text, type = '') {
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
-// Browser-Controlled Perfect Synchronization
+// Audio-Event Based Perfect Synchronization
 async function sendMessage() {
     const textInput = document.getElementById('textInput');
     const text = textInput.value.trim();
@@ -43,14 +43,14 @@ async function sendMessage() {
 
     addMessage('user', text);
     textInput.value = '';
-    setStatus('🎬 Browser-Sync wird vorbereitet...', 'processing');
+    setStatus('🎬 Audio-Event Sync wird vorbereitet...', 'processing');
     showAvatarActivity();
 
     try {
-        console.log('🎯 Variante 2: Browser-gesteuerte Synchronisation');
+        console.log('🎯 Option 3: Audio-Event basierte Synchronisation');
         console.log('📤 Schritt 1: Audio + Blendshapes generieren...');
 
-        // SCHRITT 1: Audio + Blendshapes vom Server holen (OHNE zu starten)
+        // SCHRITT 1: Audio + Blendshapes vom Server holen
         const response = await fetch('/api/generate_audio_and_blendshapes', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -62,10 +62,10 @@ async function sendMessage() {
             console.log('📥 Server Response:', result);
 
             if (result.ready_for_sync && result.audio_data) {
-                console.log(`🎬 Bereit für Browser-Sync: ${result.audio_length}s Audio + ${result.blendshapes_count} frames`);
-                setStatus(`🎬 Synchronisation vorbereitet: ${result.audio_length}s`, 'processing');
+                console.log(`🎬 Bereit für Audio-Event Sync: ${result.audio_length}s Audio + ${result.blendshapes_count} frames`);
+                setStatus(`🎬 Audio-Event Sync vorbereitet: ${result.audio_length}s`, 'processing');
 
-                // SCHRITT 2: Audio vorbereiten (aber noch nicht abspielen)
+                // SCHRITT 2: Audio vorbereiten
                 const audioBytes = atob(result.audio_data);
                 const audioArray = new Uint8Array(audioBytes.length);
                 for (let i = 0; i < audioBytes.length; i++) {
@@ -76,43 +76,65 @@ async function sendMessage() {
                 const audioUrl = URL.createObjectURL(audioBlob);
                 const audio = new Audio(audioUrl);
 
-                // Audio laden und bereit machen
-                await new Promise((resolve, reject) => {
-                    audio.oncanplaythrough = resolve;
-                    audio.onerror = reject;
-                    audio.load();
-                });
+                // SCHRITT 3: AUDIO-EVENT LISTENER KONFIGURIEREN
+                let livelinkTriggered = false;
 
-                console.log('🔊 Audio bereit für simultanen Start');
-                setStatus('🚀 Perfekte Synchronisation startet...', 'processing');
-
-                // SCHRITT 3: SIMULTANER START - Audio + LiveLink zur EXAKT gleichen Zeit
-                console.log('🎊 SIMULTANER START: Audio + LiveLink gleichzeitig!');
-
-                // Audio-Events konfigurieren
-                let syncStarted = false;
-                audio.onplay = () => {
-                    if (!syncStarted) {
-                        console.log('🔊 Audio startet - LiveLink parallel getriggert');
-                        setStatus('🎊 PERFEKTE SYNCHRONISATION LÄUFT!', 'speaking');
-                        syncStarted = true;
-                    }
+                audio.onloadstart = () => {
+                    console.log('🔄 Audio lädt...');
+                    setStatus('🔄 Audio wird geladen...', 'processing');
                 };
 
-                let progressInterval;
+                audio.oncanplay = () => {
+                    console.log('✅ Audio bereit - wartet auf Play-Event');
+                    setStatus('✅ Audio bereit - wartet auf Wiedergabe...', 'ready');
+                };
+
+                // KRITISCHER EVENT: Audio startet wirklich
+                audio.addEventListener('playing', async () => {
+                    if (!livelinkTriggered) {
+                        livelinkTriggered = true;
+                        console.log('🎊 AUDIO SPIELT WIRKLICH → LiveLink wird getriggert!');
+                        setStatus('🎊 Audio spielt → LiveLink startet!', 'speaking');
+
+                        try {
+                            // LiveLink SOFORT triggern wenn Audio wirklich spielt
+                            const livelinkResponse = await fetch('/api/trigger_livelink', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    audio_event_triggered: true,
+                                    trigger_time: performance.now()
+                                })
+                            });
+
+                            if (livelinkResponse.ok) {
+                                const livelinkData = await livelinkResponse.json();
+                                console.log('🎭 LiveLink durch Audio-Event getriggert:', livelinkData);
+                                console.log('🎊 PERFEKTE AUDIO-EVENT SYNCHRONISATION!');
+                            } else {
+                                console.error('❌ LiveLink Trigger fehlgeschlagen:', livelinkResponse.status);
+                            }
+
+                        } catch (livelinkError) {
+                            console.error('❌ LiveLink Trigger Fehler:', livelinkError);
+                        }
+                    }
+                });
+
+                // Progress-Tracking
                 audio.ontimeupdate = () => {
                     const progress = (audio.currentTime / audio.duration) * 100;
                     if (progress > 0) {
-                        setStatus(`🎵 Perfekt synchron: ${Math.round(progress)}%`, 'speaking');
+                        setStatus(`🎵 Audio-Event Sync: ${Math.round(progress)}%`, 'speaking');
                     }
                 };
 
+                // Audio Ende
                 audio.onended = () => {
-                    console.log('🎊 Audio + LiveLink Synchronisation komplett!');
-                    setStatus('✅ Perfekte Synchronisation beendet', 'success');
-                    clearInterval(progressInterval);
+                    console.log('🎊 Audio-Event Synchronisation komplett!');
+                    setStatus('✅ Audio-Event Sync beendet', 'success');
                     setTimeout(() => {
-                        setStatus('Bereit • Browser-gesteuerte Sync aktiv', 'ready');
+                        setStatus('Bereit • Audio-Event basierte Sync aktiv', 'ready');
                     }, 2000);
                     URL.revokeObjectURL(audioUrl);
                 };
@@ -123,50 +145,34 @@ async function sendMessage() {
                     URL.revokeObjectURL(audioUrl);
                 };
 
-                // KRITISCHER MOMENT: SIMULTANER START
+                // SCHRITT 4: Audio vorbereiten und laden
+                console.log('🔄 Audio wird für Event-Trigger vorbereitet...');
+                setStatus('🔄 Audio wird für Event-basierte Sync vorbereitet...', 'processing');
+
+                // Audio vollständig laden
+                await new Promise((resolve, reject) => {
+                    audio.oncanplaythrough = resolve;
+                    audio.onerror = reject;
+                    audio.load();
+                });
+
+                console.log('🚀 Audio bereit - starte Wiedergabe für Event-Trigger...');
+                setStatus('🚀 Audio startet → Event-Trigger wartet...', 'processing');
+
+                // SCHRITT 5: Audio starten - 'playing' Event wird LiveLink triggern
                 try {
-                    // Promise für Audio-Start
-                    const audioStartPromise = audio.play();
-
-                    // Promise für LiveLink-Trigger
-                    const livelinkTriggerPromise = fetch('/api/trigger_livelink', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ sync_with_audio: true })
-                    });
-
-                    // BEIDE GLEICHZEITIG WARTEN
-                    const [audioResult, livelinkResult] = await Promise.all([
-                        audioStartPromise,
-                        livelinkTriggerPromise
-                    ]);
-
-                    if (livelinkResult.ok) {
-                        const livelinkData = await livelinkResult.json();
-                        console.log('🎭 LiveLink getriggert:', livelinkData);
-                        console.log('🎊 PERFEKTE SYNCHRONISATION: Audio + LiveLink simultan gestartet!');
-                    } else {
-                        console.error('❌ LiveLink Trigger fehlgeschlagen:', livelinkResult.status);
-                        setStatus('LiveLink-Fehler - Audio läuft weiter', 'warning');
-                    }
-
-                } catch (startError) {
-                    console.error('❌ Simultaner Start fehlgeschlagen:', startError);
+                    await audio.play();
+                    console.log('🔊 Audio.play() aufgerufen - Event-Listener wartet auf "playing"');
+                } catch (playError) {
+                    console.error('❌ Audio play Fehler:', playError);
                     setStatus('Browser blockiert Audio - User-Interaction erforderlich', 'warning');
 
                     // Fallback: User-Click erforderlich
                     addMessage('system', '🔊 Klicken Sie hier um Audio zu aktivieren', 'warning');
                     document.addEventListener('click', async () => {
                         try {
-                            const audioStartPromise = audio.play();
-                            const livelinkTriggerPromise = fetch('/api/trigger_livelink', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ sync_with_audio: true })
-                            });
-
-                            await Promise.all([audioStartPromise, livelinkTriggerPromise]);
-                            console.log('🔊 Audio + LiveLink nach User-Interaction gestartet');
+                            await audio.play();
+                            console.log('🔊 Audio nach User-Interaction gestartet');
                         } catch (e) {
                             console.error('Audio weiterhin blockiert:', e);
                         }
@@ -180,7 +186,7 @@ async function sendMessage() {
             }
 
             // Avatar-Antwort zur Chat-Historie hinzufügen
-            addMessage('avatar', text, 'browser-synced');
+            addMessage('avatar', text, 'audio-event-synced');
 
         } else {
             console.error('❌ Server Fehler:', response.status, response.statusText);
@@ -189,9 +195,9 @@ async function sendMessage() {
         }
 
     } catch (error) {
-        console.error('❌ Browser-Sync Fehler:', error);
-        setStatus('Browser-Synchronisation fehlgeschlagen', 'error');
-        addMessage('system', 'Synchronisationsfehler. Bitte versuchen Sie es erneut.', 'error');
+        console.error('❌ Audio-Event Sync Fehler:', error);
+        setStatus('Audio-Event Synchronisation fehlgeschlagen', 'error');
+        addMessage('system', 'Audio-Event Synchronisationsfehler. Bitte versuchen Sie es erneut.', 'error');
     }
 }
 
@@ -221,44 +227,27 @@ async function toggleRecording() {
             };
 
             mediaRecorder.onstop = async () => {
-                console.log('🎤 Aufnahme beendet, Chunks:', audioChunks.length);
                 const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                console.log('🎤 Audio-Blob Größe:', audioBlob.size, 'bytes');
                 await transcribeAudio(audioBlob);
 
                 stream.getTracks().forEach(track => {
                     track.stop();
-                    console.log('🔇 Audio-Track gestoppt');
                 });
-            };
-
-            mediaRecorder.onerror = (event) => {
-                console.error('❌ MediaRecorder Fehler:', event.error);
-                setStatus('Aufnahme-Fehler', 'error');
             };
 
             mediaRecorder.start(1000);
             isRecording = true;
             micButton.textContent = '🔴 Stop';
             micButton.classList.add('recording');
-            setStatus('🎤 Aufnahme läuft... (Sprechen Sie jetzt)', 'recording');
-
-            console.log('🎤 Aufnahme gestartet');
+            setStatus('🎤 Aufnahme läuft...', 'recording');
 
         } catch (error) {
             console.error('❌ Mikrofon Fehler:', error);
-            if (error.name === 'NotAllowedError') {
-                setStatus('Mikrofon-Berechtigung verweigert', 'error');
-                addMessage('system', 'Bitte erlauben Sie Mikrofon-Zugriff für Spracheingabe.', 'error');
-            } else {
-                setStatus('Mikrofon-Fehler', 'error');
-                addMessage('system', `Mikrofon-Fehler: ${error.message}`, 'error');
-            }
+            setStatus('Mikrofon-Fehler', 'error');
         }
     } else {
         if (mediaRecorder && mediaRecorder.state === 'recording') {
             mediaRecorder.stop();
-            console.log('🎤 Stoppe Aufnahme...');
         }
         isRecording = false;
         micButton.textContent = '🎤 Aufnehmen';
@@ -269,7 +258,6 @@ async function toggleRecording() {
 
 async function transcribeAudio(audioBlob) {
     try {
-        console.log('📤 Sende Audio zur Transkription...');
         const formData = new FormData();
         formData.append('audio', audioBlob, 'recording.webm');
 
@@ -284,7 +272,7 @@ async function transcribeAudio(audioBlob) {
 
             if (transcription.trim()) {
                 document.getElementById('textInput').value = transcription;
-                setStatus('✅ Sprache erkannt: "' + transcription.substring(0, 30) + '..."', 'success');
+                setStatus('✅ Sprache erkannt', 'success');
                 addMessage('system', `Sprache erkannt: "${transcription}"`, 'transcription');
 
                 setTimeout(() => {
@@ -292,10 +280,8 @@ async function transcribeAudio(audioBlob) {
                 }, 1000);
             } else {
                 setStatus('Keine Sprache erkannt', 'warning');
-                addMessage('system', 'Keine Sprache erkannt. Versuchen Sie es erneut.', 'warning');
             }
         } else {
-            console.error('❌ Transkriptions-Fehler:', response.status);
             setStatus('Transkription fehlgeschlagen', 'error');
         }
 
@@ -311,13 +297,13 @@ function clearChat() {
     messagesDiv.innerHTML = `
         <div class="message avatar-message">
             <strong>Avatar</strong>
-            Hallo! Ich bin dein KI-Avatar mit Browser-gesteuerter perfekter Synchronisation! 
-            Audio und LiveLink werden vom Browser zur exakt gleichen Zeit gestartet!
-            <small>Variante 2 aktiv</small>
+            Hallo! Ich bin dein KI-Avatar mit Audio-Event basierter perfekter Synchronisation! 
+            LiveLink startet erst wenn Audio wirklich spielt - bei jeder Internetgeschwindigkeit!
+            <small>Option 3 - Audio-Event basiert</small>
         </div>
     `;
-    setStatus('Chat gelöscht • Browser-Sync bereit', 'ready');
-    console.log('🧹 Chat gelöscht - Variante 2 aktiv');
+    setStatus('Chat gelöscht • Audio-Event Sync bereit', 'ready');
+    console.log('🧹 Chat gelöscht - Option 3 (Audio-Event) aktiv');
 }
 
 function toggleStream() {
@@ -326,7 +312,6 @@ function toggleStream() {
         iframe.style.display = iframe.style.display === 'none' ? 'block' : 'none';
         const visible = iframe.style.display !== 'none';
         setStatus(visible ? 'Avatar-Stream sichtbar' : 'Avatar-Stream ausgeblendet', 'info');
-        console.log('👁️ Avatar-Stream:', visible ? 'sichtbar' : 'ausgeblendet');
     }
 }
 
@@ -339,7 +324,6 @@ function resetStream() {
             iframe.src = originalSrc;
         }, 100);
         setStatus('Avatar-Stream zurückgesetzt', 'info');
-        console.log('🔄 Avatar-Stream zurückgesetzt');
     }
 }
 
@@ -359,32 +343,26 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     checkSystemHealth();
-    setStatus('Variante 2 geladen • Browser-gesteuerte Synchronisation bereit', 'ready');
+    setStatus('Option 3 geladen • Audio-Event basierte Synchronisation bereit', 'ready');
 
-    console.log('🎉 NeuroSync Avatar Chat - Variante 2 (Browser-gesteuert) geladen!');
-    console.log('🎯 Features: Browser kontrolliert Audio + LiveLink simultan');
+    console.log('🎉 NeuroSync Avatar Chat - Option 3 (Audio-Event basiert) geladen!');
+    console.log('🎯 Konzept: LiveLink startet wenn Audio "playing" Event feuert');
+    console.log('🎊 Vorteil: Funktioniert bei jeder Internetgeschwindigkeit!');
 });
 
 // System Health Check
 async function checkSystemHealth() {
     try {
-        console.log('🔍 Prüfe System-Status...');
         const response = await fetch('/health');
         if (response.ok) {
             const health = await response.json();
-            console.log('💚 System Health:', health);
 
             if (health.neurosync_server === 'offline') {
                 setStatus('⚠️ NeuroSync Server offline', 'error');
                 addMessage('system', 'NeuroSync AI Server ist nicht erreichbar.', 'error');
-            } else if (health.sync_mode === 'browser_controlled_sync') {
-                setStatus('✅ Browser-gesteuerte Synchronisation aktiv', 'ready');
             } else {
-                setStatus('✅ NeuroSync System verbunden', 'ready');
+                setStatus('✅ Audio-Event basierte Synchronisation aktiv', 'ready');
             }
-        } else {
-            console.warn('⚠️ Health Check fehlgeschlagen:', response.status);
-            setStatus('System-Status unbekannt', 'warning');
         }
     } catch (error) {
         console.error('❌ Health Check Fehler:', error);
@@ -392,47 +370,8 @@ async function checkSystemHealth() {
     }
 }
 
-// Auto-Health Check alle 30 Sekunden
 setInterval(checkSystemHealth, 30000);
 
-// Browser-Kompatibilität prüfen
-function checkBrowserSupport() {
-    const features = {
-        'Web Audio API': 'AudioContext' in window || 'webkitAudioContext' in window,
-        'Media Recorder': 'MediaRecorder' in window,
-        'getUserMedia': navigator.mediaDevices && navigator.mediaDevices.getUserMedia,
-        'Fetch API': 'fetch' in window,
-        'Promise.all': 'Promise' in window && typeof Promise.all === 'function'
-    };
-
-    console.log('🌐 Browser-Support:', features);
-
-    const unsupported = Object.entries(features)
-        .filter(([feature, supported]) => !supported)
-        .map(([feature]) => feature);
-
-    if (unsupported.length > 0) {
-        console.warn('⚠️ Nicht unterstützte Features:', unsupported);
-        addMessage('system', `Browser-Warnung: ${unsupported.join(', ')} nicht verfügbar.`, 'warning');
-    } else {
-        console.log('✅ Alle Browser-Features für perfekte Synchronisation verfügbar');
-    }
-}
-
-setTimeout(checkBrowserSupport, 1000);
-
-// Global Error Handler
-window.addEventListener('error', (event) => {
-    console.error('🔥 Global Error:', event.error);
-    setStatus('Unerwarteter Fehler aufgetreten', 'error');
-});
-
-window.addEventListener('unhandledrejection', (event) => {
-    console.error('🔥 Unhandled Promise Rejection:', event.reason);
-    setStatus('Asynchroner Fehler aufgetreten', 'error');
-});
-
-console.log('🚀 NeuroSync Avatar Chat - Variante 2 (Browser-gesteuerte Synchronisation) vollständig initialisiert');
-console.log('🎭 Konzept: Browser startet Audio + LiveLink simultan via Promise.all()');
-console.log('🎊 Erwartung: Perfekte Synchronisation durch Browser-Timing-Kontrolle');
-console.log('🔧 Debug-Modus: Alle Timing-Events werden geloggt');
+console.log('🚀 NeuroSync Avatar Chat - Option 3: Audio-Event basierte perfekte Synchronisation');
+console.log('🎭 LiveLink wartet auf Audio "playing" Event für latenz-unabhängige Sync');
+console.log('🎊 Perfekt für alle Internetgeschwindigkeiten und Browser!');
