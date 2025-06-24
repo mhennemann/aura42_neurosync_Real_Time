@@ -26,7 +26,6 @@ def synthesize_and_blendshapes():
         data = request.get_json()
         text = data.get('text', '')
         voice = data.get('voice', 'franzi')  # Standard: Franzi
-        
         print(f"🎯 Sende an NeuroSync: {text} (Stimme: {voice})")
         
         # Voice-ID ermitteln
@@ -45,27 +44,66 @@ def synthesize_and_blendshapes():
         print(f"✅ NeuroSync Antwort: {response.status_code}")
         
         if response.status_code == 200:
+            # NEU: Multipart Response parsen
+            try:
+                from utils.multi_part_return import parse_multipart_response
+                audio_bytes, blendshapes_list = parse_multipart_response(response)
+                
+                print(f"📊 Audio: {len(audio_bytes) if audio_bytes else 0} bytes")
+                print(f"🎭 Blendshapes: {len(blendshapes_list) if blendshapes_list else 0} frames")
+                
+                # NEU: LiveLink an UE5 senden
+                if blendshapes_list:
+                    try:
+                        from livelink.connect.livelink_init import create_socket_connection, initialize_py_face
+                        from livelink.send_to_unreal import pre_encode_facial_data, send_pre_encoded_data_to_unreal
+                        from threading import Event
+                        
+                        print(f"🎯 Sending {len(blendshapes_list)} frames to UE5 via LiveLink")
+                        
+                        # LiveLink Setup
+                        py_face = initialize_py_face()
+                        socket_connection = create_socket_connection()
+                        
+                        # Blendshapes encodieren
+                        encoded_data = pre_encode_facial_data(blendshapes_list, py_face)
+                        
+                        # An UE5 senden
+                        start_event = Event()
+                        start_event.set()
+                        send_pre_encoded_data_to_unreal(encoded_data, start_event, 60, socket_connection)
+                        
+                        print(f"✅ LiveLink sent successfully to UE5!")
+                        
+                    except Exception as e:
+                        print(f"❌ LiveLink error: {e}")
+                        import traceback
+                        traceback.print_exc()
+                
+            except Exception as e:
+                print(f"❌ Multipart parsing error: {e}")
+            
             return jsonify({
                 "status": "success", 
-                "message": "Avatar spricht",
+                "message": "Avatar spricht mit LiveLink",
                 "text": text,
                 "voice": voice
             })
         else:
             return jsonify({
-                "status": "error", 
+                "status": "error",
                 "message": f"NeuroSync Fehler: {response.status_code}"
             }), 500
             
     except requests.exceptions.ConnectionError:
         return jsonify({
-            "status": "error", 
+            "status": "error",
             "message": "Verbindung zum NeuroSync-Server nicht möglich. Läuft er?"
         }), 500
     except Exception as e:
         print(f"❌ Fehler: {e}")
         return jsonify({
-            "status": "error", 
+            "status": "error",
             "message": str(e)
         }), 500
 
@@ -200,14 +238,15 @@ def health():
         available_voices = []
     
     return jsonify({
-        "status": "Web-Interface läuft",
+        "status": "Web-Interface läuft mit LiveLink",
         "neurosync_server": neurosync_status,
         "audio_server": audio_status,
         "server_url": NEUROSYNC_SERVER,
         "audio_server_url": NEUROSYNC_AUDIO_SERVER,
         "available_voices": available_voices,
         "default_voice": "franzi",
-        "voice_mapping": VOICE_MAPPING
+        "voice_mapping": VOICE_MAPPING,
+        "livelink_integration": "enabled"
     })
 
 @app.route('/api/voices')
@@ -249,13 +288,14 @@ def set_voice():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    print("🚀 NeuroSync Web-Interface wird gestartet...")
+    print("🚀 NeuroSync Web-Interface mit LiveLink wird gestartet...")
     print("🎯 NeuroSync Server:", NEUROSYNC_SERVER)
     print("🎤 NeuroSync Audio Server:", NEUROSYNC_AUDIO_SERVER)
     print("🔊 Standard-Stimme: Franzi (Deutsche TTS)")
+    print("🔗 LiveLink Integration: AKTIVIERT")
     print("🌐 Web-Interface verfügbar unter:")
     print("   - Lokal: http://127.0.0.1:9000")
     print("   - HTTPS: https://neurosync.aura42.de")
     print("   - HTTPS: https://avatar.aura42.de")
     print("📋 Verfügbare Stimmen:", list(VOICE_MAPPING.keys()))
-    app.run(host='0.0.0.0', port=9000, debug=False)
+    app.run(host='127.0.0.1', port=9000, debug=False)
