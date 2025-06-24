@@ -1,4 +1,4 @@
-﻿// NeuroSync Avatar Chat - Audio-Event Based Perfect Synchronization + Auto-Start
+﻿// NeuroSync Avatar Chat - ChatGPT Integration + Audio-Event Synchronization
 let isRecording = false;
 let mediaRecorder;
 let audioChunks = [];
@@ -11,7 +11,7 @@ function setStatus(message, type = 'info') {
 }
 
 function showAvatarActivity() {
-    setStatus('🎭 Avatar wird vorbereitet...', 'processing');
+    setStatus('🤖 ChatGPT denkt nach...', 'processing');
 }
 
 function addMessage(sender, text, type = '') {
@@ -25,7 +25,7 @@ function addMessage(sender, text, type = '') {
     });
 
     messageDiv.innerHTML = `
-        <strong>${sender === 'user' ? 'Du' : 'Avatar'}</strong>
+        <strong>${sender === 'user' ? 'Du' : 'Franzi (KI)'}</strong>
         ${text}
         <small>${timestamp}</small>
     `;
@@ -34,7 +34,7 @@ function addMessage(sender, text, type = '') {
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
-// Audio-Event Based Perfect Synchronization
+// ChatGPT + Audio-Event Based Perfect Synchronization
 async function sendMessage() {
     const textInput = document.getElementById('textInput');
     const text = textInput.value.trim();
@@ -43,14 +43,14 @@ async function sendMessage() {
 
     addMessage('user', text);
     textInput.value = '';
-    setStatus('🎬 Audio-Event Sync wird vorbereitet...', 'processing');
+    setStatus('🤖 ChatGPT generiert Antwort...', 'processing');
     showAvatarActivity();
 
     try {
-        console.log('🎯 Option 3: Audio-Event basierte Synchronisation');
-        console.log('📤 Schritt 1: Audio + Blendshapes generieren...');
+        console.log('🤖 ChatGPT Integration: Sende Nachricht...');
+        console.log('📤 User Input:', text);
 
-        // SCHRITT 1: Audio + Blendshapes vom Server holen
+        // SCHRITT 1: ChatGPT Antwort + Audio + Blendshapes generieren
         const response = await fetch('/api/generate_audio_and_blendshapes', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -59,11 +59,16 @@ async function sendMessage() {
 
         if (response.ok) {
             const result = await response.json();
-            console.log('📥 Server Response:', result);
+            console.log('📥 ChatGPT Server Response:', result);
 
-            if (result.ready_for_sync && result.audio_data) {
-                console.log(`🎬 Bereit für Audio-Event Sync: ${result.audio_length}s Audio + ${result.blendshapes_count} frames`);
-                setStatus(`🎬 Audio-Event Sync vorbereitet: ${result.audio_length}s`, 'processing');
+            if (result.ready_for_sync && result.audio_data && result.ai_response) {
+                console.log(`🤖 ChatGPT Antwort: "${result.ai_response}"`);
+                console.log(`🎬 Audio-Event Sync bereit: ${result.audio_length}s Audio + ${result.blendshapes_count} frames`);
+
+                setStatus(`🤖 ChatGPT: "${result.ai_response.substring(0, 50)}..."`, 'processing');
+
+                // ChatGPT Antwort zum Chat hinzufügen (BEVOR Audio startet)
+                addMessage('avatar', result.ai_response, 'chatgpt-response');
 
                 // SCHRITT 2: Audio vorbereiten
                 const audioBytes = atob(result.audio_data);
@@ -80,43 +85,43 @@ async function sendMessage() {
                 let livelinkTriggered = false;
 
                 audio.onloadstart = () => {
-                    console.log('🔄 Audio lädt...');
-                    setStatus('🔄 Audio wird geladen...', 'processing');
+                    console.log('🔄 ChatGPT Audio lädt...');
+                    setStatus('🔄 Franzis Antwort wird vorbereitet...', 'processing');
                 };
 
                 audio.oncanplay = () => {
-                    console.log('✅ Audio bereit - wartet auf Play-Event');
-                    setStatus('✅ Audio bereit - wartet auf Wiedergabe...', 'ready');
+                    console.log('✅ ChatGPT Audio bereit - wartet auf Play-Event');
+                    setStatus('✅ Franzi bereit - Audio startet gleich...', 'ready');
                 };
 
-                // KRITISCHER EVENT: Audio startet wirklich
+                // KRITISCHER EVENT: Audio startet wirklich → LiveLink triggern
                 audio.addEventListener('playing', async () => {
                     if (!livelinkTriggered) {
                         livelinkTriggered = true;
-                        console.log('🎊 AUDIO SPIELT WIRKLICH → LiveLink wird getriggert!');
-                        setStatus('🎊 Audio spielt → LiveLink startet!', 'speaking');
+                        console.log('🎊 CHATGPT AUDIO SPIELT → LiveLink wird getriggert!');
+                        setStatus('🎊 Franzi spricht → LiveLink synchron!', 'speaking');
 
                         try {
-                            // LiveLink SOFORT triggern wenn Audio wirklich spielt
                             const livelinkResponse = await fetch('/api/trigger_livelink', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
-                                    audio_event_triggered: true,
+                                    chatgpt_response: true,
+                                    ai_text: result.ai_response,
                                     trigger_time: performance.now()
                                 })
                             });
 
                             if (livelinkResponse.ok) {
                                 const livelinkData = await livelinkResponse.json();
-                                console.log('🎭 LiveLink durch Audio-Event getriggert:', livelinkData);
-                                console.log('🎊 PERFEKTE AUDIO-EVENT SYNCHRONISATION!');
+                                console.log('🎭 ChatGPT LiveLink getriggert:', livelinkData);
+                                console.log('🎊 PERFEKTE CHATGPT AUDIO-EVENT SYNCHRONISATION!');
                             } else {
-                                console.error('❌ LiveLink Trigger fehlgeschlagen:', livelinkResponse.status);
+                                console.error('❌ ChatGPT LiveLink Trigger fehlgeschlagen:', livelinkResponse.status);
                             }
 
                         } catch (livelinkError) {
-                            console.error('❌ LiveLink Trigger Fehler:', livelinkError);
+                            console.error('❌ ChatGPT LiveLink Trigger Fehler:', livelinkError);
                         }
                     }
                 });
@@ -125,29 +130,29 @@ async function sendMessage() {
                 audio.ontimeupdate = () => {
                     const progress = (audio.currentTime / audio.duration) * 100;
                     if (progress > 0) {
-                        setStatus(`🎵 Audio-Event Sync: ${Math.round(progress)}%`, 'speaking');
+                        setStatus(`🎵 Franzi spricht: ${Math.round(progress)}%`, 'speaking');
                     }
                 };
 
                 // Audio Ende
                 audio.onended = () => {
-                    console.log('🎊 Audio-Event Synchronisation komplett!');
-                    setStatus('✅ Audio-Event Sync beendet', 'success');
+                    console.log('🎊 ChatGPT Audio-Event Synchronisation komplett!');
+                    setStatus('✅ Franzi hat geantwortet', 'success');
                     setTimeout(() => {
-                        setStatus('Bereit • Audio-Event basierte Sync aktiv', 'ready');
+                        setStatus('Bereit für die nächste Frage • ChatGPT + Audio-Event Sync', 'ready');
                     }, 2000);
                     URL.revokeObjectURL(audioUrl);
                 };
 
                 audio.onerror = (e) => {
-                    console.error('❌ Audio Fehler:', e);
-                    setStatus('Audio-Fehler', 'error');
+                    console.error('❌ ChatGPT Audio Fehler:', e);
+                    setStatus('Audio-Fehler - Franzi hat geantwortet (stumm)', 'error');
                     URL.revokeObjectURL(audioUrl);
                 };
 
-                // SCHRITT 4: Audio vorbereiten und laden
-                console.log('🔄 Audio wird für Event-Trigger vorbereitet...');
-                setStatus('🔄 Audio wird für Event-basierte Sync vorbereitet...', 'processing');
+                // SCHRITT 4: Audio laden und vorbereiten
+                console.log('🔄 ChatGPT Audio wird für Event-Trigger vorbereitet...');
+                setStatus('🔄 Franzis Antwort wird für Synchronisation vorbereitet...', 'processing');
 
                 // Audio vollständig laden
                 await new Promise((resolve, reject) => {
@@ -156,52 +161,49 @@ async function sendMessage() {
                     audio.load();
                 });
 
-                console.log('🚀 Audio bereit - starte Wiedergabe für Event-Trigger...');
-                setStatus('🚀 Audio startet → Event-Trigger wartet...', 'processing');
+                console.log('🚀 ChatGPT Audio bereit - starte Wiedergabe...');
+                setStatus('🚀 Franzi startet zu sprechen...', 'processing');
 
                 // SCHRITT 5: Audio starten - 'playing' Event wird LiveLink triggern
                 try {
                     await audio.play();
-                    console.log('🔊 Audio.play() aufgerufen - Event-Listener wartet auf "playing"');
+                    console.log('🔊 ChatGPT Audio.play() aufgerufen - Event-Listener wartet auf "playing"');
                 } catch (playError) {
-                    console.error('❌ Audio play Fehler:', playError);
-                    setStatus('Browser blockiert Audio - User-Interaction erforderlich', 'warning');
+                    console.error('❌ ChatGPT Audio play Fehler:', playError);
+                    setStatus('Browser blockiert Audio - Klicken Sie irgendwo zum Aktivieren', 'warning');
 
                     // Fallback: User-Click erforderlich
-                    addMessage('system', '🔊 Klicken Sie hier um Audio zu aktivieren', 'warning');
+                    addMessage('system', '🔊 Klicken Sie irgendwo um Franzis Audio zu aktivieren', 'warning');
                     document.addEventListener('click', async () => {
                         try {
                             await audio.play();
-                            console.log('🔊 Audio nach User-Interaction gestartet');
+                            console.log('🔊 ChatGPT Audio nach User-Interaction gestartet');
                         } catch (e) {
-                            console.error('Audio weiterhin blockiert:', e);
+                            console.error('ChatGPT Audio weiterhin blockiert:', e);
                         }
                     }, { once: true });
                 }
 
             } else {
-                console.error('❌ Server nicht bereit für Sync:', result);
-                setStatus('Server-Synchronisation fehlgeschlagen', 'error');
-                addMessage('system', 'Synchronisation konnte nicht vorbereitet werden.', 'error');
+                console.error('❌ ChatGPT Server nicht bereit für Sync:', result);
+                setStatus('ChatGPT-Synchronisation fehlgeschlagen', 'error');
+                addMessage('system', 'ChatGPT Antwort konnte nicht verarbeitet werden.', 'error');
             }
 
-            // Avatar-Antwort zur Chat-Historie hinzufügen
-            addMessage('avatar', text, 'audio-event-synced');
-
         } else {
-            console.error('❌ Server Fehler:', response.status, response.statusText);
-            setStatus('Server-Fehler', 'error');
-            addMessage('system', `Server-Fehler (${response.status}). Versuchen Sie es erneut.`, 'error');
+            console.error('❌ ChatGPT Server Fehler:', response.status, response.statusText);
+            setStatus('ChatGPT Server-Fehler', 'error');
+            addMessage('system', `ChatGPT Server-Fehler (${response.status}). Versuchen Sie es erneut.`, 'error');
         }
 
     } catch (error) {
-        console.error('❌ Audio-Event Sync Fehler:', error);
-        setStatus('Audio-Event Synchronisation fehlgeschlagen', 'error');
-        addMessage('system', 'Audio-Event Synchronisationsfehler. Bitte versuchen Sie es erneut.', 'error');
+        console.error('❌ ChatGPT Integration Fehler:', error);
+        setStatus('ChatGPT Integration fehlgeschlagen', 'error');
+        addMessage('system', 'ChatGPT Verbindungsfehler. Bitte versuchen Sie es erneut.', 'error');
     }
 }
 
-// Voice Recording Functions
+// Voice Recording Functions (unverändert)
 async function toggleRecording() {
     const micButton = document.getElementById('micButton');
 
@@ -239,7 +241,7 @@ async function toggleRecording() {
             isRecording = true;
             micButton.textContent = '🔴 Stop';
             micButton.classList.add('recording');
-            setStatus('🎤 Aufnahme läuft...', 'recording');
+            setStatus('🎤 Aufnahme läuft... (Sprechen Sie Ihre Frage)', 'recording');
 
         } catch (error) {
             console.error('❌ Mikrofon Fehler:', error);
@@ -252,7 +254,7 @@ async function toggleRecording() {
         isRecording = false;
         micButton.textContent = '🎤 Aufnehmen';
         micButton.classList.remove('recording');
-        setStatus('🔄 Transkribiere Sprache...', 'processing');
+        setStatus('🔄 Transkribiere Ihre Frage...', 'processing');
     }
 }
 
@@ -272,22 +274,22 @@ async function transcribeAudio(audioBlob) {
 
             if (transcription.trim()) {
                 document.getElementById('textInput').value = transcription;
-                setStatus('✅ Sprache erkannt', 'success');
-                addMessage('system', `Sprache erkannt: "${transcription}"`, 'transcription');
+                setStatus('✅ Frage erkannt: "' + transcription.substring(0, 30) + '..."', 'success');
+                addMessage('system', `Frage erkannt: "${transcription}"`, 'transcription');
 
                 setTimeout(() => {
                     sendMessage();
                 }, 1000);
             } else {
-                setStatus('Keine Sprache erkannt', 'warning');
+                setStatus('Keine Frage erkannt', 'warning');
             }
         } else {
-            setStatus('Transkription fehlgeschlagen', 'error');
+            setStatus('Spracherkennung fehlgeschlagen', 'error');
         }
 
     } catch (error) {
         console.error('❌ Transkriptions-Fehler:', error);
-        setStatus('Transkriptionsfehler', 'error');
+        setStatus('Spracherkennungs-Fehler', 'error');
     }
 }
 
@@ -296,14 +298,26 @@ function clearChat() {
     const messagesDiv = document.getElementById('chatMessages');
     messagesDiv.innerHTML = `
         <div class="message avatar-message">
-            <strong>Avatar</strong>
-            Hallo! Ich bin dein KI-Avatar mit Audio-Event basierter perfekter Synchronisation! 
-            LiveLink startet erst wenn Audio wirklich spielt - bei jeder Internetgeschwindigkeit!
-            <small>Auto-Start aktiviert</small>
+            <strong>Franzi (KI)</strong>
+            Hallo! Ich bin Franzi, dein intelligenter KI-Avatar mit ChatGPT Integration! 
+            Ich kann Fragen beantworten und halte ein Gespräch mit dir. 
+            Frag mich einfach etwas!
+            <small>ChatGPT + Audio-Event Sync bereit</small>
         </div>
     `;
-    setStatus('Chat gelöscht • Audio-Event Sync + Auto-Start bereit', 'ready');
-    console.log('🧹 Chat gelöscht - Option 3 (Audio-Event) + Auto-Start aktiv');
+
+    // Conversation History löschen
+    fetch('/api/clear_conversation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    }).then(response => {
+        if (response.ok) {
+            console.log('🧹 Conversation History gelöscht');
+        }
+    });
+
+    setStatus('Chat gelöscht • ChatGPT + Audio-Event Sync bereit', 'ready');
+    console.log('🧹 Chat gelöscht - ChatGPT Integration aktiv');
 }
 
 function toggleStream() {
@@ -313,7 +327,6 @@ function toggleStream() {
         const visible = iframe.style.display !== 'none';
         setStatus(visible ? 'Avatar-Stream sichtbar' : 'Avatar-Stream ausgeblendet', 'info');
 
-        // Auto-Start nach Toggle wieder aktivieren
         if (visible) {
             setTimeout(autoStartPixelStreaming, 1000);
         }
@@ -327,154 +340,29 @@ function resetStream() {
         iframe.src = '';
         setTimeout(() => {
             iframe.src = originalSrc;
-            // Auto-Start nach Reset
             setTimeout(autoStartPixelStreaming, 2000);
         }, 100);
         setStatus('Avatar-Stream zurückgesetzt', 'info');
     }
 }
 
-// ========== AUTO-START PIXEL STREAMING ==========
+// Auto-Start Pixel Streaming (vereinfacht)
 function autoStartPixelStreaming() {
-    console.log('🎮 Auto-Start Pixel Streaming initialisiert...');
+    console.log('🎮 Auto-Start Pixel Streaming für ChatGPT Avatar...');
 
-    let attempts = 0;
-    const maxAttempts = 10;
-
-    function tryAutoStart() {
-        attempts++;
-        console.log(`🎮 Auto-Start Versuch ${attempts}/${maxAttempts}`);
-
-        const iframe = document.getElementById('pixelStreamIframe');
-        if (!iframe) {
-            console.log('❌ Iframe nicht gefunden');
-            return;
-        }
-
-        try {
-            // Methode 1: Iframe Content Window Access
-            if (iframe.contentWindow && iframe.contentDocument) {
-                const iframeDoc = iframe.contentDocument;
-
-                // Suche nach "Click to Start" Elementen
-                const possibleStartElements = [
-                    iframeDoc.querySelector('button'),
-                    iframeDoc.querySelector('[onclick]'),
-                    iframeDoc.querySelector('.start-button'),
-                    iframeDoc.querySelector('#start'),
-                    iframeDoc.querySelector('canvas'),
-                    iframeDoc.querySelector('div[style*="cursor"]'),
-                    iframeDoc.querySelector('*[role="button"]'),
-                    iframeDoc.body
-                ];
-
-                for (let element of possibleStartElements) {
-                    if (element) {
-                        console.log('🎯 Gefundenes Element für Auto-Click:', element.tagName, element.className);
-
-                        // Verschiedene Click-Events probieren
-                        element.click();
-
-                        const events = ['mousedown', 'mouseup', 'click', 'pointerdown', 'pointerup'];
-                        events.forEach(eventType => {
-                            const event = new MouseEvent(eventType, {
-                                bubbles: true,
-                                cancelable: true,
-                                view: iframe.contentWindow,
-                                clientX: 100,
-                                clientY: 100
-                            });
-                            element.dispatchEvent(event);
-                        });
-
-                        // Touch Events für mobile Kompatibilität
-                        const touchEvent = new TouchEvent('touchstart', {
-                            bubbles: true,
-                            cancelable: true,
-                            view: iframe.contentWindow
-                        });
-                        element.dispatchEvent(touchEvent);
-
-                        console.log('🎮 Auto-Click Events gesendet');
-                        return true;
-                    }
-                }
+    setTimeout(() => {
+        const iframe = document.querySelector('#pixelStreamIframe');
+        if (iframe) {
+            try {
+                iframe.focus();
+                iframe.click();
+                console.log('🎮 Auto-Start Versuche für ChatGPT Avatar');
+            } catch (e) {
+                console.log('🎮 Auto-Start blockiert - User-Click auf Avatar erforderlich');
+                addMessage('system', '🎮 Klicken Sie auf den Avatar-Stream um ihn zu starten', 'info');
             }
-
-            // Methode 2: PostMessage an iframe
-            iframe.contentWindow.postMessage({
-                type: 'autostart',
-                action: 'click',
-                x: 100,
-                y: 100
-            }, '*');
-
-            // Methode 3: Direct iframe click (Fallback)
-            const iframeClickEvent = new MouseEvent('click', {
-                bubbles: true,
-                cancelable: true,
-                clientX: 100,
-                clientY: 100
-            });
-            iframe.dispatchEvent(iframeClickEvent);
-
-            // Methode 4: Focus + Enter/Space
-            iframe.focus();
-            setTimeout(() => {
-                const keyEvents = ['Enter', 'Space', ' '];
-                keyEvents.forEach(key => {
-                    const keyEvent = new KeyboardEvent('keydown', {
-                        key: key,
-                        bubbles: true,
-                        cancelable: true
-                    });
-                    iframe.dispatchEvent(keyEvent);
-                });
-            }, 100);
-
-            console.log('🎮 Alternative Auto-Start Methoden versucht');
-
-        } catch (error) {
-            console.log('⚠️ Auto-Start blockiert (CORS/Security):', error.message);
         }
-
-        // Retry nach 2 Sekunden wenn noch Versuche übrig
-        if (attempts < maxAttempts) {
-            setTimeout(tryAutoStart, 2000);
-        } else {
-            console.log('🎮 Auto-Start Versuche beendet - User-Click erforderlich');
-            addMessage('system', '🎮 Klicken Sie auf den Avatar-Stream um ihn zu starten', 'info');
-        }
-    }
-
-    // Ersten Versuch nach 3 Sekunden starten
-    setTimeout(tryAutoStart, 3000);
-}
-
-// Event Listener für iframe load
-function setupIframeAutoStart() {
-    const iframe = document.getElementById('pixelStreamIframe');
-    if (iframe) {
-        iframe.onload = () => {
-            console.log('🎮 Iframe geladen - starte Auto-Start...');
-            setTimeout(autoStartPixelStreaming, 1000);
-        };
-
-        iframe.onerror = () => {
-            console.log('❌ Iframe Ladefehler');
-        };
-
-        // Fallback falls onload nicht feuert
-        setTimeout(autoStartPixelStreaming, 5000);
-
-        // Event Listener für postMessage (falls iframe kommuniziert)
-        window.addEventListener('message', (event) => {
-            if (event.data && event.data.type === 'pixelStreamingReady') {
-                console.log('🎮 Pixel Streaming bereit - starte Auto-Start');
-                autoStartPixelStreaming();
-            }
-        });
-    }
+    }, 3000);
 }
 
 // Event Listeners
@@ -490,17 +378,17 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         textInput.focus();
+        textInput.placeholder = "Stellen Sie Franzi eine Frage...";
     }
 
-    // Auto-Start Pixel Streaming initialisieren
-    console.log('🎮 Auto-Start Pixel Streaming wird initialisiert...');
-    setupIframeAutoStart();
+    // Auto-Start für Avatar
+    autoStartPixelStreaming();
 
     checkSystemHealth();
-    setStatus('Option 3 + Auto-Start geladen • Audio-Event Sync + Auto-Stream bereit', 'ready');
+    setStatus('ChatGPT Integration geladen • Franzi bereit für Gespräche', 'ready');
 
-    console.log('🎉 NeuroSync Avatar Chat - Option 3 (Audio-Event) + Auto-Start geladen!');
-    console.log('🎯 Features: Audio-Event Sync + Automatischer Pixel Stream Start');
+    console.log('🎉 NeuroSync Avatar Chat - ChatGPT Integration geladen!');
+    console.log('🤖 Features: ChatGPT Antworten + Audio-Event Sync + Franzi Avatar');
 });
 
 // System Health Check
@@ -513,8 +401,10 @@ async function checkSystemHealth() {
             if (health.neurosync_server === 'offline') {
                 setStatus('⚠️ NeuroSync Server offline', 'error');
                 addMessage('system', 'NeuroSync AI Server ist nicht erreichbar.', 'error');
+            } else if (health.ai_integration === 'ChatGPT (OpenAI)') {
+                setStatus('✅ ChatGPT + Audio-Event Sync aktiv', 'ready');
             } else {
-                setStatus('✅ Audio-Event Sync + Auto-Start aktiv', 'ready');
+                setStatus('✅ NeuroSync System verbunden', 'ready');
             }
         }
     } catch (error) {
@@ -525,18 +415,7 @@ async function checkSystemHealth() {
 
 setInterval(checkSystemHealth, 30000);
 
-// Global Error Handler
-window.addEventListener('error', (event) => {
-    console.error('🔥 Global Error:', event.error);
-    setStatus('Unerwarteter Fehler aufgetreten', 'error');
-});
-
-window.addEventListener('unhandledrejection', (event) => {
-    console.error('🔥 Unhandled Promise Rejection:', event.reason);
-    setStatus('Asynchroner Fehler aufgetreten', 'error');
-});
-
-console.log('🚀 NeuroSync Avatar Chat - Audio-Event Sync + Auto-Start Pixel Streaming');
-console.log('🎭 LiveLink: Wartet auf Audio "playing" Event für perfekte Synchronisation');
-console.log('🎮 Auto-Start: Versucht automatisch Pixel Streaming zu starten');
-console.log('🎊 Optimiert für alle Internetgeschwindigkeiten und Browser!');
+console.log('🚀 NeuroSync Avatar Chat - ChatGPT Integration');
+console.log('🤖 ChatGPT: Intelligente Antworten mit Conversation Memory');
+console.log('🎭 LiveLink: Audio-Event basierte perfekte Synchronisation');
+console.log('🎊 Franzi: Deutsche KI-Avatar mit natürlicher Sprache!');

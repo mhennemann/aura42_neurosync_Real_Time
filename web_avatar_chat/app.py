@@ -2,12 +2,16 @@
 import requests
 import os
 import base64
+import openai
 
 app = Flask(__name__)
 
 # NeuroSync Server URL
 NEUROSYNC_SERVER = "http://localhost:8000"
 NEUROSYNC_AUDIO_SERVER = "http://localhost:6969"
+
+# OpenAI API Configuration
+openai.api_key = "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"
 
 # Voice-Mapping für ElevenLabs (mit Franzi als Standard)
 VOICE_MAPPING = {
@@ -17,27 +21,80 @@ VOICE_MAPPING = {
     'default': 'NX39CipaoYitJ3sMwH5I'       # Standard: Franzi
 }
 
+# Conversation History (in Produktion: Redis/Database verwenden)
+conversation_history = []
+
 @app.route('/')
 def index():
     return render_template('index.html')
 
+def get_chatgpt_response(user_message):
+    """Holt intelligente Antwort von ChatGPT"""
+    try:
+        # Conversation History für Kontext
+        messages = [
+            {
+                "role": "system", 
+                "content": "Du bist Franzi, ein hilfsreicher KI-Avatar mit NeuroSync-Technologie. Du sprichst Deutsch und antwortest freundlich und hilfreich. Du kannst über Text und Sprache kommunizieren und deine Antworten werden als Audio mit Gesichtsanimation dargestellt. Halte deine Antworten prägnant (max 2-3 Sätze) damit die Audio-Synchronisation gut funktioniert."
+            }
+        ]
+        
+        # Letzte 6 Nachrichten für Kontext hinzufügen
+        for msg in conversation_history[-6:]:
+            messages.append(msg)
+        
+        # Aktuelle Nachricht hinzufügen
+        messages.append({"role": "user", "content": user_message})
+        
+        print(f"🤖 Sende an ChatGPT: {user_message}")
+        
+        # OpenAI API Call
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=messages,
+            max_tokens=100,  # Kürzere Antworten für bessere Audio-Sync
+            temperature=0.7,
+            stream=False
+        )
+        
+        ai_response = response.choices[0].message.content.strip()
+        print(f"🤖 ChatGPT Antwort: {ai_response}")
+        
+        # Conversation History aktualisieren
+        conversation_history.append({"role": "user", "content": user_message})
+        conversation_history.append({"role": "assistant", "content": ai_response})
+        
+        # Nur letzte 12 Nachrichten behalten (Memory-Management)
+        if len(conversation_history) > 12:
+            conversation_history.pop(0)
+            conversation_history.pop(0)
+        
+        return ai_response
+        
+    except Exception as e:
+        print(f"❌ ChatGPT Fehler: {e}")
+        return f"Entschuldigung, ich kann gerade nicht antworten. Bitte versuchen Sie es erneut."
+
 @app.route('/api/generate_audio_and_blendshapes', methods=['POST'])
 def generate_audio_and_blendshapes():
-    """Generiert Audio + Blendshapes, aber startet NICHTS - Browser kontrolliert alles"""
+    """Generiert Audio + Blendshapes für ChatGPT Antwort"""
     try:
         data = request.get_json()
-        text = data.get('text', '')
+        user_text = data.get('text', '')
         voice = data.get('voice', 'franzi')
-        print(f"🎯 Generiere für Browser-Sync: {text} (Stimme: {voice})")
+        print(f"🎯 User Input: {user_text} (Stimme: {voice})")
+        
+        # ChatGPT Antwort holen
+        ai_response = get_chatgpt_response(user_text)
         
         # Voice-ID ermitteln
         voice_id = VOICE_MAPPING.get(voice, VOICE_MAPPING['default'])
         
-        # An NeuroSync-Server weiterleiten
+        # AI-Antwort an NeuroSync senden für Audio+Blendshapes
         response = requests.post(
             f"{NEUROSYNC_SERVER}/synthesize_and_blendshapes",
             json={
-                "text": text,
+                "text": ai_response,  # ← ChatGPT Antwort statt User Input!
                 "voice": voice_id
             },
             timeout=30
@@ -60,22 +117,22 @@ def generate_audio_and_blendshapes():
                     # Audio als Base64 enkodieren
                     audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
                     
-                    # Blendshapes für späteren LiveLink-Trigger speichern
-                    # (Global oder in Session - hier vereinfacht als Global)
+                    # Blendshapes für LiveLink speichern
                     global current_blendshapes
                     current_blendshapes = blendshapes_list
                     
-                    print(f"🎬 Browser-Sync vorbereitet: {audio_length_seconds:.1f}s Audio + {len(blendshapes_list)} frames")
+                    print(f"🎬 ChatGPT-Sync vorbereitet: {audio_length_seconds:.1f}s Audio + {len(blendshapes_list)} frames")
                     
                     return jsonify({
                         "status": "success",
-                        "message": "Audio + Blendshapes für Browser-Sync bereit",
-                        "text": text,
+                        "message": "ChatGPT Antwort für Audio-Sync bereit",
+                        "user_text": user_text,        # Was User geschrieben hat
+                        "ai_response": ai_response,     # Was ChatGPT geantwortet hat
                         "voice": voice,
                         "audio_data": audio_base64,
                         "audio_length": audio_length_seconds,
                         "blendshapes_count": len(blendshapes_list),
-                        "sync_mode": "browser_controlled_sync",
+                        "sync_mode": "chatgpt_audio_sync",
                         "ready_for_sync": True
                     })
                 
@@ -94,13 +151,8 @@ def generate_audio_and_blendshapes():
                 "message": f"NeuroSync Fehler: {response.status_code}"
             }), 500
             
-    except requests.exceptions.ConnectionError:
-        return jsonify({
-            "status": "error",
-            "message": "Verbindung zum NeuroSync-Server nicht möglich. Läuft er?"
-        }), 500
     except Exception as e:
-        print(f"❌ Fehler: {e}")
+        print(f"❌ ChatGPT Integration Fehler: {e}")
         return jsonify({
             "status": "error",
             "message": str(e)
@@ -108,11 +160,10 @@ def generate_audio_and_blendshapes():
 
 @app.route('/api/trigger_livelink', methods=['POST'])
 def trigger_livelink():
-    """Browser-gesteuerter LiveLink-Trigger - startet Animation synchron zu Browser-Audio"""
+    """Browser-gesteuerter LiveLink-Trigger für ChatGPT Antworten"""
     try:
-        print("🎭 Browser triggert LiveLink-Animation...")
+        print("🎭 Browser triggert LiveLink für ChatGPT Antwort...")
         
-        # Blendshapes aus Global-Variable (in Produktion: Session/Redis verwenden)
         global current_blendshapes
         if 'current_blendshapes' not in globals() or not current_blendshapes:
             return jsonify({
@@ -120,7 +171,6 @@ def trigger_livelink():
                 "message": "Keine Blendshapes verfügbar"
             }), 400
         
-        # LiveLink sofort starten
         from livelink.connect.livelink_init import create_socket_connection, initialize_py_face
         from livelink.send_to_unreal import pre_encode_facial_data, send_pre_encoded_data_to_unreal
         from threading import Event, Thread
@@ -134,36 +184,52 @@ def trigger_livelink():
                 start_event = Event()
                 start_event.set()
                 
-                print(f"🎭 LiveLink Animation startet für {len(current_blendshapes)} frames...")
+                print(f"🎭 ChatGPT LiveLink Animation startet für {len(current_blendshapes)} frames...")
                 send_pre_encoded_data_to_unreal(encoded_data, start_event, 60, socket_connection)
-                print("🎭 LiveLink Animation komplett")
+                print("🎭 ChatGPT LiveLink Animation komplett")
                 
             except Exception as e:
-                print(f"❌ LiveLink Fehler: {e}")
+                print(f"❌ ChatGPT LiveLink Fehler: {e}")
                 import traceback
                 traceback.print_exc()
         
-        # LiveLink in separatem Thread (non-blocking)
         livelink_thread = Thread(target=execute_livelink)
         livelink_thread.start()
         
         return jsonify({
             "status": "success",
-            "message": "LiveLink Animation gestartet",
+            "message": "ChatGPT LiveLink Animation gestartet",
             "frames": len(current_blendshapes)
         })
         
     except Exception as e:
-        print(f"❌ LiveLink Trigger Fehler: {e}")
+        print(f"❌ ChatGPT LiveLink Trigger Fehler: {e}")
         return jsonify({
             "status": "error",
             "message": str(e)
         }), 500
 
-# Alte API-Endpoints für Kompatibilität
+@app.route('/api/conversation_history', methods=['GET'])
+def get_conversation_history():
+    """Gibt die Conversation History zurück"""
+    return jsonify({
+        "history": conversation_history,
+        "count": len(conversation_history)
+    })
+
+@app.route('/api/clear_conversation', methods=['POST'])
+def clear_conversation():
+    """Löscht die Conversation History"""
+    global conversation_history
+    conversation_history.clear()
+    return jsonify({
+        "status": "success",
+        "message": "Conversation History gelöscht"
+    })
+
+# Legacy-Endpoints
 @app.route('/api/synthesize_and_blendshapes', methods=['POST'])
 def synthesize_and_blendshapes():
-    """Legacy-Endpoint - leitet zu neuer Browser-Sync weiter"""
     return generate_audio_and_blendshapes()
 
 @app.route('/api/get_audio', methods=['POST'])
@@ -172,8 +238,6 @@ def get_audio():
         data = request.get_json()
         text = data.get('text', '')
         voice = data.get('voice', 'franzi')
-        
-        print(f"🎵 Legacy Audio für: {text} (Stimme: {voice})")
         
         voice_id = VOICE_MAPPING.get(voice, VOICE_MAPPING['default'])
         
@@ -185,8 +249,6 @@ def get_audio():
             },
             timeout=30
         )
-        
-        print(f"🔊 Audio-Antwort: {response.status_code}, Größe: {len(response.content)} bytes")
         
         if response.status_code == 200:
             return Response(
@@ -201,7 +263,6 @@ def get_audio():
             return jsonify({"error": "Audio-Generierung fehlgeschlagen"}), 500
             
     except Exception as e:
-        print(f"❌ Audio-Fehler: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/transcribe', methods=['POST'])
@@ -212,8 +273,6 @@ def transcribe():
             
         audio_file = request.files['audio']
         audio_data = audio_file.read()
-        
-        print(f"🎤 Transkribiere Audio: {len(audio_data)} bytes")
         
         files = {
             'file': ('audio.wav', audio_data, 'audio/wav')
@@ -253,25 +312,26 @@ def transcribe():
             return jsonify({"error": f"ElevenLabs API Fehler: {response.status_code}"}), 500
         
     except Exception as e:
-        print(f"❌ Transkriptions-Fehler: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/health')
 def health():
     try:
-        response = requests.get(f"{NEUROSYNC_SERVER}/", timeout=5)
-        neurosync_status = "online" if response.status_code == 200 else "offline"
+        response = requests.options(f"{NEUROSYNC_SERVER}/synthesize_and_blendshapes", timeout=5)
+        neurosync_status = "online" if response.status_code in [200, 405] else "offline"
     except:
         neurosync_status = "offline"
     
     return jsonify({
-        "status": "Web-Interface mit Browser-gesteuerter Synchronisation",
+        "status": "Web-Interface mit ChatGPT + Audio-Event Synchronisation",
         "neurosync_server": neurosync_status,
         "server_url": NEUROSYNC_SERVER,
         "available_voices": list(VOICE_MAPPING.keys()),
         "default_voice": "franzi",
         "voice_mapping": VOICE_MAPPING,
-        "sync_mode": "browser_controlled_sync",
+        "sync_mode": "chatgpt_audio_event_sync",
+        "ai_integration": "ChatGPT (OpenAI)",
+        "conversation_history": len(conversation_history),
         "livelink_integration": "enabled"
     })
 
@@ -288,15 +348,16 @@ def get_voices():
     })
 
 if __name__ == '__main__':
-    print("🚀 NeuroSync Web-Interface mit Browser-gesteuerter Synchronisation...")
+    print("🚀 NeuroSync Web-Interface mit ChatGPT Integration...")
     print("🎯 NeuroSync Server:", NEUROSYNC_SERVER)
     print("🔊 Standard-Stimme: Franzi (Deutsche TTS)")
     print("🔗 LiveLink Integration: Browser-gesteuert")
-    print("🎵 Sync Modus: Browser kontrolliert Audio + LiveLink")
+    print("🤖 AI Integration: ChatGPT (OpenAI)")
+    print("🎵 Sync Modus: ChatGPT + Audio-Event basierte Synchronisation")
     print("🌐 Web-Interface verfügbar unter:")
     print("   - Lokal: http://127.0.0.1:9000")
     print("   - HTTPS: https://neurosync.aura42.de")
     print("   - HTTPS: https://avatar.aura42.de")
     print("📋 Verfügbare Stimmen:", list(VOICE_MAPPING.keys()))
-    print("🎊 BROWSER-GESTEUERTE SYNCHRONISATION: Perfekte Timing-Kontrolle!")
+    print("🎊 CHATGPT INTEGRATION: Intelligente KI-Antworten mit perfekter Synchronisation!")
     app.run(host='127.0.0.1', port=9000, debug=False)
