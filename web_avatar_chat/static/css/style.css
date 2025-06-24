@@ -369,3 +369,45 @@ button {
     .chat-messages::-webkit-scrollbar-thumb:hover {
         background: #0052a3;
     }
+
+/* In static/css/style.css hinzufügen */
+.sync-controls {
+    background: #2c3e50;
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 8px;
+    text-align: center;
+}
+
+    .sync-controls label {
+        color: #ecf0f1;
+        font-size: 14px;
+        margin-right: 10px;
+    }
+
+#audioDelaySlider {
+    width: 150px;
+    margin: 0 10px;
+}
+
+#delayValue {
+    color: #3498db;
+    font-weight: bold;
+    min-width: 50px;
+    display: inline-block;
+}
+
+#testSyncBtn {
+    background: #e74c3c;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 5px;
+    margin-left: 10px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+    #testSyncBtn:hover {
+        background: #c0392b;
+    }

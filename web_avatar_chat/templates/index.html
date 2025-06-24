@@ -30,6 +30,13 @@
             <button id="micButton" class="mic-button" onclick="toggleRecording()">🎤 Aufnehmen</button>
             <button onclick="clearChat()">Chat löschen</button>
         </div>
+        <!-- In templates/index.html nach den <div class="controls"> einfügen -->
+        <div class="sync-controls">
+            <label for="audioDelaySlider">🎵 Audio-Sync Delay:</label>
+            <input type="range" id="audioDelaySlider" min="0" max="200" value="80" step="10">
+            <span id="delayValue">80ms</span>
+            <button onclick="testSync()" id="testSyncBtn">🔄 Test Sync</button>
+        </div>
 
         <div class="status" id="status">
             Bereit • ElevenLabs + NeuroSync System verbunden

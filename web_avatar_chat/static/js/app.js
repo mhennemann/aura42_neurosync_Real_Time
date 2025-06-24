@@ -1,7 +1,48 @@
-﻿// NeuroSync Avatar Chat - ChatGPT Integration + Audio-Event Synchronization
+﻿// NeuroSync Avatar Chat - ChatGPT + Adjustable Audio Delay Slider
 let isRecording = false;
 let mediaRecorder;
 let audioChunks = [];
+let currentAudioDelayMs = 80; // Standard Delay
+
+// Audio Delay Management
+function initializeDelaySlider() {
+    const slider = document.getElementById('audioDelaySlider');
+    const delayValue = document.getElementById('delayValue');
+
+    if (slider && delayValue) {
+        // Slider Event Listener
+        slider.addEventListener('input', function () {
+            currentAudioDelayMs = parseInt(this.value);
+            delayValue.textContent = currentAudioDelayMs + 'ms';
+            console.log(`🎵 Audio-Delay geändert auf: ${currentAudioDelayMs}ms`);
+
+            // Delay in LocalStorage speichern
+            localStorage.setItem('audioSyncDelay', currentAudioDelayMs);
+        });
+
+        // Gespeicherten Delay laden
+        const savedDelay = localStorage.getItem('audioSyncDelay');
+        if (savedDelay) {
+            currentAudioDelayMs = parseInt(savedDelay);
+            slider.value = currentAudioDelayMs;
+            delayValue.textContent = currentAudioDelayMs + 'ms';
+            console.log(`🎵 Gespeicherter Audio-Delay geladen: ${currentAudioDelayMs}ms`);
+        }
+    }
+}
+
+// Test-Sync Funktion
+function testSync() {
+    const testText = "Dies ist ein Test der Audio-Synchronisation mit dem angepassten Delay.";
+    console.log(`🔄 Teste Sync mit ${currentAudioDelayMs}ms Delay`);
+
+    // Test-Nachricht in Input setzen
+    const textInput = document.getElementById('textInput');
+    if (textInput) {
+        textInput.value = testText;
+        sendMessage();
+    }
+}
 
 // Status Management
 function setStatus(message, type = 'info') {
@@ -27,14 +68,14 @@ function addMessage(sender, text, type = '') {
     messageDiv.innerHTML = `
         <strong>${sender === 'user' ? 'Du' : 'Franzi (KI)'}</strong>
         ${text}
-        <small>${timestamp}</small>
+        <small>${timestamp} ${type === 'chatgpt-response' ? `(Delay: ${currentAudioDelayMs}ms)` : ''}</small>
     `;
 
     messagesDiv.appendChild(messageDiv);
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
-// ChatGPT + Audio-Event Based Perfect Synchronization
+// ChatGPT + Audio-Event Based Perfect Synchronization mit Delay-Slider
 async function sendMessage() {
     const textInput = document.getElementById('textInput');
     const text = textInput.value.trim();
@@ -43,11 +84,11 @@ async function sendMessage() {
 
     addMessage('user', text);
     textInput.value = '';
-    setStatus('🤖 ChatGPT generiert Antwort...', 'processing');
+    setStatus(`🤖 ChatGPT denkt nach (Delay: ${currentAudioDelayMs}ms)...`, 'processing');
     showAvatarActivity();
 
     try {
-        console.log('🤖 ChatGPT Integration: Sende Nachricht...');
+        console.log(`🤖 ChatGPT Integration mit ${currentAudioDelayMs}ms Audio-Delay`);
         console.log('📤 User Input:', text);
 
         // SCHRITT 1: ChatGPT Antwort + Audio + Blendshapes generieren
@@ -65,7 +106,7 @@ async function sendMessage() {
                 console.log(`🤖 ChatGPT Antwort: "${result.ai_response}"`);
                 console.log(`🎬 Audio-Event Sync bereit: ${result.audio_length}s Audio + ${result.blendshapes_count} frames`);
 
-                setStatus(`🤖 ChatGPT: "${result.ai_response.substring(0, 50)}..."`, 'processing');
+                setStatus(`🤖 ChatGPT: "${result.ai_response.substring(0, 40)}..." (${currentAudioDelayMs}ms)`, 'processing');
 
                 // ChatGPT Antwort zum Chat hinzufügen (BEVOR Audio startet)
                 addMessage('avatar', result.ai_response, 'chatgpt-response');
@@ -86,19 +127,19 @@ async function sendMessage() {
 
                 audio.onloadstart = () => {
                     console.log('🔄 ChatGPT Audio lädt...');
-                    setStatus('🔄 Franzis Antwort wird vorbereitet...', 'processing');
+                    setStatus(`🔄 Franzis Antwort wird vorbereitet (${currentAudioDelayMs}ms Delay)...`, 'processing');
                 };
 
                 audio.oncanplay = () => {
-                    console.log('✅ ChatGPT Audio bereit - wartet auf Play-Event');
-                    setStatus('✅ Franzi bereit - Audio startet gleich...', 'ready');
+                    console.log('✅ ChatGPT Audio bereit - wartet auf optimiertes Timing');
+                    setStatus(`✅ Franzi bereit - startet in ${currentAudioDelayMs}ms...`, 'ready');
                 };
 
                 // KRITISCHER EVENT: Audio startet wirklich → LiveLink triggern
                 audio.addEventListener('playing', async () => {
                     if (!livelinkTriggered) {
                         livelinkTriggered = true;
-                        console.log('🎊 CHATGPT AUDIO SPIELT → LiveLink wird getriggert!');
+                        console.log(`🎊 CHATGPT AUDIO SPIELT (${currentAudioDelayMs}ms Delay) → LiveLink getriggert!`);
                         setStatus('🎊 Franzi spricht → LiveLink synchron!', 'speaking');
 
                         try {
@@ -108,13 +149,14 @@ async function sendMessage() {
                                 body: JSON.stringify({
                                     chatgpt_response: true,
                                     ai_text: result.ai_response,
+                                    audio_delay: currentAudioDelayMs,
                                     trigger_time: performance.now()
                                 })
                             });
 
                             if (livelinkResponse.ok) {
                                 const livelinkData = await livelinkResponse.json();
-                                console.log('🎭 ChatGPT LiveLink getriggert:', livelinkData);
+                                console.log(`🎭 ChatGPT LiveLink getriggert (${currentAudioDelayMs}ms):`, livelinkData);
                                 console.log('🎊 PERFEKTE CHATGPT AUDIO-EVENT SYNCHRONISATION!');
                             } else {
                                 console.error('❌ ChatGPT LiveLink Trigger fehlgeschlagen:', livelinkResponse.status);
@@ -126,20 +168,20 @@ async function sendMessage() {
                     }
                 });
 
-                // Progress-Tracking
+                // Progress-Tracking mit Delay-Info
                 audio.ontimeupdate = () => {
                     const progress = (audio.currentTime / audio.duration) * 100;
                     if (progress > 0) {
-                        setStatus(`🎵 Franzi spricht: ${Math.round(progress)}%`, 'speaking');
+                        setStatus(`🎵 Franzi spricht: ${Math.round(progress)}% (${currentAudioDelayMs}ms)`, 'speaking');
                     }
                 };
 
                 // Audio Ende
                 audio.onended = () => {
-                    console.log('🎊 ChatGPT Audio-Event Synchronisation komplett!');
-                    setStatus('✅ Franzi hat geantwortet', 'success');
+                    console.log(`🎊 ChatGPT Audio-Event Synchronisation komplett (${currentAudioDelayMs}ms)!`);
+                    setStatus(`✅ Franzi hat geantwortet (Delay: ${currentAudioDelayMs}ms)`, 'success');
                     setTimeout(() => {
-                        setStatus('Bereit für die nächste Frage • ChatGPT + Audio-Event Sync', 'ready');
+                        setStatus(`Bereit für die nächste Frage • Delay: ${currentAudioDelayMs}ms`, 'ready');
                     }, 2000);
                     URL.revokeObjectURL(audioUrl);
                 };
@@ -151,8 +193,8 @@ async function sendMessage() {
                 };
 
                 // SCHRITT 4: Audio laden und vorbereiten
-                console.log('🔄 ChatGPT Audio wird für Event-Trigger vorbereitet...');
-                setStatus('🔄 Franzis Antwort wird für Synchronisation vorbereitet...', 'processing');
+                console.log(`🔄 ChatGPT Audio wird für Event-Trigger vorbereitet (${currentAudioDelayMs}ms Delay)...`);
+                setStatus(`🔄 Franzis Antwort wird für Synchronisation vorbereitet (${currentAudioDelayMs}ms)...`, 'processing');
 
                 // Audio vollständig laden
                 await new Promise((resolve, reject) => {
@@ -161,27 +203,36 @@ async function sendMessage() {
                     audio.load();
                 });
 
-                console.log('🚀 ChatGPT Audio bereit - starte Wiedergabe...');
-                setStatus('🚀 Franzi startet zu sprechen...', 'processing');
+                console.log(`🚀 ChatGPT Audio bereit - starte mit ${currentAudioDelayMs}ms Delay...`);
+                setStatus(`🚀 Franzi startet in ${currentAudioDelayMs}ms...`, 'processing');
 
-                // SCHRITT 5: Audio starten - 'playing' Event wird LiveLink triggern
+                // SCHRITT 5: Audio mit anpassbarem Delay starten
                 try {
-                    await audio.play();
-                    console.log('🔊 ChatGPT Audio.play() aufgerufen - Event-Listener wartet auf "playing"');
-                } catch (playError) {
-                    console.error('❌ ChatGPT Audio play Fehler:', playError);
-                    setStatus('Browser blockiert Audio - Klicken Sie irgendwo zum Aktivieren', 'warning');
-
-                    // Fallback: User-Click erforderlich
-                    addMessage('system', '🔊 Klicken Sie irgendwo um Franzis Audio zu aktivieren', 'warning');
-                    document.addEventListener('click', async () => {
+                    // ANPASSBARER AUDIO-DELAY für perfekte Synchronisation
+                    setTimeout(async () => {
                         try {
                             await audio.play();
-                            console.log('🔊 ChatGPT Audio nach User-Interaction gestartet');
-                        } catch (e) {
-                            console.error('ChatGPT Audio weiterhin blockiert:', e);
+                            console.log(`🔊 ChatGPT Audio.play() mit ${currentAudioDelayMs}ms Delay - optimierte Sync!`);
+                        } catch (delayedPlayError) {
+                            console.error('❌ ChatGPT Audio play nach Delay Fehler:', delayedPlayError);
+                            setStatus('Browser blockiert Audio - Klicken Sie irgendwo', 'warning');
+
+                            // Fallback: User-Click
+                            addMessage('system', '🔊 Klicken Sie irgendwo um Franzis Audio zu aktivieren', 'warning');
+                            document.addEventListener('click', async () => {
+                                try {
+                                    await audio.play();
+                                    console.log(`🔊 ChatGPT Audio nach User-Interaction + ${currentAudioDelayMs}ms Delay gestartet`);
+                                } catch (e) {
+                                    console.error('ChatGPT Audio weiterhin blockiert:', e);
+                                }
+                            }, { once: true });
                         }
-                    }, { once: true });
+                    }, currentAudioDelayMs); // ← ANPASSBARER DELAY VOM SLIDER!
+
+                } catch (playError) {
+                    console.error('❌ ChatGPT Audio Timing-Setup Fehler:', playError);
+                    setStatus('Audio-Timing Fehler', 'error');
                 }
 
             } else {
@@ -241,7 +292,7 @@ async function toggleRecording() {
             isRecording = true;
             micButton.textContent = '🔴 Stop';
             micButton.classList.add('recording');
-            setStatus('🎤 Aufnahme läuft... (Sprechen Sie Ihre Frage)', 'recording');
+            setStatus(`🎤 Aufnahme läuft (Delay: ${currentAudioDelayMs}ms)...`, 'recording');
 
         } catch (error) {
             console.error('❌ Mikrofon Fehler:', error);
@@ -299,10 +350,10 @@ function clearChat() {
     messagesDiv.innerHTML = `
         <div class="message avatar-message">
             <strong>Franzi (KI)</strong>
-            Hallo! Ich bin Franzi, dein intelligenter KI-Avatar mit ChatGPT Integration! 
-            Ich kann Fragen beantworten und halte ein Gespräch mit dir. 
+            Hallo! Ich bin Franzi mit anpassbarer Audio-Synchronisation! 
+            Nutzen Sie den Delay-Slider oben um die perfekte Lippensynchronisation einzustellen.
             Frag mich einfach etwas!
-            <small>ChatGPT + Audio-Event Sync bereit</small>
+            <small>ChatGPT + Audio-Delay-Slider bereit (${currentAudioDelayMs}ms)</small>
         </div>
     `;
 
@@ -316,8 +367,8 @@ function clearChat() {
         }
     });
 
-    setStatus('Chat gelöscht • ChatGPT + Audio-Event Sync bereit', 'ready');
-    console.log('🧹 Chat gelöscht - ChatGPT Integration aktiv');
+    setStatus(`Chat gelöscht • Audio-Delay: ${currentAudioDelayMs}ms`, 'ready');
+    console.log(`🧹 Chat gelöscht - ChatGPT + Delay-Slider (${currentAudioDelayMs}ms) aktiv`);
 }
 
 function toggleStream() {
@@ -326,10 +377,6 @@ function toggleStream() {
         iframe.style.display = iframe.style.display === 'none' ? 'block' : 'none';
         const visible = iframe.style.display !== 'none';
         setStatus(visible ? 'Avatar-Stream sichtbar' : 'Avatar-Stream ausgeblendet', 'info');
-
-        if (visible) {
-            setTimeout(autoStartPixelStreaming, 1000);
-        }
     }
 }
 
@@ -340,29 +387,9 @@ function resetStream() {
         iframe.src = '';
         setTimeout(() => {
             iframe.src = originalSrc;
-            setTimeout(autoStartPixelStreaming, 2000);
         }, 100);
         setStatus('Avatar-Stream zurückgesetzt', 'info');
     }
-}
-
-// Auto-Start Pixel Streaming (vereinfacht)
-function autoStartPixelStreaming() {
-    console.log('🎮 Auto-Start Pixel Streaming für ChatGPT Avatar...');
-
-    setTimeout(() => {
-        const iframe = document.querySelector('#pixelStreamIframe');
-        if (iframe) {
-            try {
-                iframe.focus();
-                iframe.click();
-                console.log('🎮 Auto-Start Versuche für ChatGPT Avatar');
-            } catch (e) {
-                console.log('🎮 Auto-Start blockiert - User-Click auf Avatar erforderlich');
-                addMessage('system', '🎮 Klicken Sie auf den Avatar-Stream um ihn zu starten', 'info');
-            }
-        }
-    }, 3000);
 }
 
 // Event Listeners
@@ -381,14 +408,14 @@ document.addEventListener('DOMContentLoaded', function () {
         textInput.placeholder = "Stellen Sie Franzi eine Frage...";
     }
 
-    // Auto-Start für Avatar
-    autoStartPixelStreaming();
+    // Delay-Slider initialisieren
+    initializeDelaySlider();
 
     checkSystemHealth();
-    setStatus('ChatGPT Integration geladen • Franzi bereit für Gespräche', 'ready');
+    setStatus(`ChatGPT + Delay-Slider geladen • Audio-Delay: ${currentAudioDelayMs}ms`, 'ready');
 
-    console.log('🎉 NeuroSync Avatar Chat - ChatGPT Integration geladen!');
-    console.log('🤖 Features: ChatGPT Antworten + Audio-Event Sync + Franzi Avatar');
+    console.log('🎉 NeuroSync Avatar Chat - ChatGPT + Audio-Delay-Slider geladen!');
+    console.log(`🤖 Features: ChatGPT + Audio-Event Sync + Anpassbarer Delay (${currentAudioDelayMs}ms)`);
 });
 
 // System Health Check
@@ -402,7 +429,7 @@ async function checkSystemHealth() {
                 setStatus('⚠️ NeuroSync Server offline', 'error');
                 addMessage('system', 'NeuroSync AI Server ist nicht erreichbar.', 'error');
             } else if (health.ai_integration === 'ChatGPT (OpenAI)') {
-                setStatus('✅ ChatGPT + Audio-Event Sync aktiv', 'ready');
+                setStatus(`✅ ChatGPT + Audio-Delay aktiv (${currentAudioDelayMs}ms)`, 'ready');
             } else {
                 setStatus('✅ NeuroSync System verbunden', 'ready');
             }
@@ -415,7 +442,8 @@ async function checkSystemHealth() {
 
 setInterval(checkSystemHealth, 30000);
 
-console.log('🚀 NeuroSync Avatar Chat - ChatGPT Integration');
+console.log('🚀 NeuroSync Avatar Chat - ChatGPT + Anpassbarer Audio-Delay-Slider');
 console.log('🤖 ChatGPT: Intelligente Antworten mit Conversation Memory');
-console.log('🎭 LiveLink: Audio-Event basierte perfekte Synchronisation');
-console.log('🎊 Franzi: Deutsche KI-Avatar mit natürlicher Sprache!');
+console.log('🎭 LiveLink: Audio-Event basierte Synchronisation');
+console.log('🎵 Audio-Delay: Anpassbar von 0-200ms für perfekte Lippensync');
+console.log('🎊 Franzi: Deutsche KI-Avatar mit optimaler Synchronisation!');
