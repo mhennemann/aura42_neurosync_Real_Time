@@ -1,412 +1,325 @@
-﻿// NeuroSync Avatar Chat - Perfect Audio+LiveLink Synchronization
-let isRecording = false;
-let mediaRecorder;
-let audioChunks = [];
+﻿from flask import Flask, render_template, request, jsonify, Response
+import requests
+import os
+import base64
 
-// Status Management
-function setStatus(message, type = 'info') {
-    const statusEl = document.getElementById('status');
-    statusEl.textContent = message;
-    statusEl.className = `status ${type}`;
+app = Flask(__name__)
+
+# NeuroSync Server URL
+NEUROSYNC_SERVER = "http://localhost:8000"
+NEUROSYNC_AUDIO_SERVER = "http://localhost:6969"
+
+# Voice-Mapping für ElevenLabs (mit Franzi als Standard)
+VOICE_MAPPING = {
+    'franzi': 'NX39CipaoYitJ3sMwH5I',      # Deutsche Franzi-Stimme
+    'bf_isabella': 'EXAVITQu4vr4xnSDxMaL',  # Bella
+    'af_heart': '21m00Tcm4TlvDq8ikWAM',     # Rachel
+    'default': 'NX39CipaoYitJ3sMwH5I'       # Standard: Franzi
 }
 
-function showAvatarActivity() {
-    setStatus('🎭 Avatar spricht...', 'speaking');
-}
+@app.route('/')
+def index():
+    return render_template('index.html')
 
-function addMessage(sender, text, type = '') {
-    const messagesDiv = document.getElementById('chatMessages');
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `message ${sender}-message ${type}`;
-    
-    const timestamp = new Date().toLocaleTimeString('de-DE', { 
-        hour: '2-digit', 
-        minute: '2-digit' 
-    });
-    
-    messageDiv.innerHTML = `
-        <strong>${sender === 'user' ? 'Du' : 'Avatar'}</strong>
-        ${text}
-        <small>${timestamp}</small>
-    `;
-    
-    messagesDiv.appendChild(messageDiv);
-    messagesDiv.scrollTop = messagesDiv.scrollHeight;
-}
-
-// Perfect Synchronized Message Sending
-async function sendMessage() {
-    const textInput = document.getElementById('textInput');
-    const text = textInput.value.trim();
-    
-    if (!text) return;
-    
-    addMessage('user', text);
-    textInput.value = '';
-    setStatus('🎯 Perfekte Synchronisation wird vorbereitet...', 'processing');
-    showAvatarActivity();
-    
-    try {
-        // Sende Text an NeuroSync für Audio+LiveLink Generierung
-        console.log('📤 Sende an NeuroSync:', text);
-        const response = await fetch('/api/synthesize_and_blendshapes', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: text, voice: 'franzi' })
-        });
+@app.route('/api/synthesize_and_blendshapes', methods=['POST'])
+def synthesize_and_blendshapes():
+    try:
+        data = request.get_json()
+        text = data.get('text', '')
+        voice = data.get('voice', 'franzi')
+        print(f"🎯 Sende an NeuroSync: {text} (Stimme: {voice})")
         
-        if (response.ok) {
-            const result = await response.json();
-            console.log('📥 NeuroSync Response:', result);
-            
-            // Prüfe ob Audio-Daten in Response enthalten sind
-            if (result.audio_data && result.play_audio) {
-                console.log(`🎯 Perfekte Sync: Audio ${result.audio_length}s + LiveLink gestartet`);
+        # Voice-ID ermitteln
+        voice_id = VOICE_MAPPING.get(voice, VOICE_MAPPING['default'])
+        
+        # An NeuroSync-Server weiterleiten mit Voice-ID
+        response = requests.post(
+            f"{NEUROSYNC_SERVER}/synthesize_and_blendshapes",
+            json={
+                "text": text,
+                "voice": voice_id
+            },
+            timeout=30
+        )
+        
+        print(f"✅ NeuroSync Antwort: {response.status_code}")
+        
+        if response.status_code == 200:
+            try:
+                from utils.multi_part_return import parse_multipart_response
+                audio_bytes, blendshapes_list = parse_multipart_response(response)
                 
-                // Audio aus Base64 dekodieren
-                const audioBytes = atob(result.audio_data);
-                const audioArray = new Uint8Array(audioBytes.length);
-                for (let i = 0; i < audioBytes.length; i++) {
-                    audioArray[i] = audioBytes.charCodeAt(i);
+                print(f"📊 Audio: {len(audio_bytes) if audio_bytes else 0} bytes")
+                print(f"🎭 Blendshapes: {len(blendshapes_list) if blendshapes_list else 0} frames")
+                
+                if blendshapes_list and audio_bytes:
+                    try:
+                        from livelink.connect.livelink_init import create_socket_connection, initialize_py_face
+                        from livelink.send_to_unreal import pre_encode_facial_data, send_pre_encoded_data_to_unreal
+                        from threading import Event, Thread
+                        import time
+                        
+                        print(f"🎯 Perfekte Sync: Audio + LiveLink gleichzeitig für {len(blendshapes_list)} frames")
+                        
+                        # Audio-Dauer berechnen (Approximation)
+                        audio_length_seconds = len(audio_bytes) / (22050 * 2)  # 22kHz, 16bit
+                        print(f"🕐 Audio-Dauer: {audio_length_seconds:.1f} Sekunden")
+                        
+                        # LiveLink parallel zu Browser-Audio starten
+                        def start_synchronized_livelink():
+                            try:
+                                # Kurzer Puffer für Browser-Audio Start
+                                time.sleep(0.2)
+                                
+                                py_face = initialize_py_face()
+                                socket_connection = create_socket_connection()
+                                encoded_data = pre_encode_facial_data(blendshapes_list, py_face)
+                                
+                                start_event = Event()
+                                start_event.set()
+                                
+                                print("🎭 Starte LiveLink synchron zu Browser-Audio...")
+                                send_pre_encoded_data_to_unreal(encoded_data, start_event, 60, socket_connection)
+                                print("🎭 LiveLink Animation komplett (synchron zu Audio)")
+                                
+                            except Exception as e:
+                                print(f"❌ Synchronized LiveLink Fehler: {e}")
+                                import traceback
+                                traceback.print_exc()
+                        
+                        # LiveLink-Thread starten (parallel zu Browser-Audio)
+                        livelink_thread = Thread(target=start_synchronized_livelink)
+                        livelink_thread.start()
+                        
+                        print(f"🚀 Audio + LiveLink gestartet - perfekte Synchronisation!")
+                        
+                        # Audio als Base64 für Browser zurückgeben
+                        audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
+                        
+                        return jsonify({
+                            "status": "success", 
+                            "message": "Avatar spricht perfekt synchron (Audio + LiveLink)",
+                            "text": text,
+                            "voice": voice,
+                            "audio_data": audio_base64,
+                            "audio_length": audio_length_seconds,
+                            "sync_mode": "perfect_audio_livelink_sync",
+                            "play_audio": True
+                        })
+                        
+                    except Exception as e:
+                        print(f"❌ Perfekte Sync Fehler: {e}")
+                        import traceback
+                        traceback.print_exc()
+                
+            except Exception as e:
+                print(f"❌ Multipart parsing error: {e}")
+            
+            return jsonify({
+                "status": "success", 
+                "message": "Avatar generiert (ohne Sync)",
+                "text": text,
+                "voice": voice
+            })
+        else:
+            return jsonify({
+                "status": "error",
+                "message": f"NeuroSync Fehler: {response.status_code}"
+            }), 500
+            
+    except requests.exceptions.ConnectionError:
+        return jsonify({
+            "status": "error",
+            "message": "Verbindung zum NeuroSync-Server nicht möglich. Läuft er?"
+        }), 500
+    except Exception as e:
+        print(f"❌ Fehler: {e}")
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+@app.route('/api/get_audio', methods=['POST'])
+def get_audio():
+    try:
+        data = request.get_json()
+        text = data.get('text', '')
+        voice = data.get('voice', 'franzi')
+        
+        print(f"🎵 Audio holen für: {text} (Stimme: {voice})")
+        
+        # Voice-ID ermitteln
+        voice_id = VOICE_MAPPING.get(voice, VOICE_MAPPING['default'])
+        
+        # Audio vom NeuroSync-Server holen
+        response = requests.post(
+            f"{NEUROSYNC_SERVER}/generate_speech",
+            json={
+                "text": text,
+                "voice": voice_id
+            },
+            timeout=30
+        )
+        
+        print(f"🔊 Audio-Antwort: {response.status_code}, Größe: {len(response.content)} bytes")
+        
+        if response.status_code == 200:
+            return Response(
+                response.content,
+                mimetype="audio/wav",
+                headers={
+                    "Content-Disposition": "attachment; filename=franzi_speech.wav",
+                    "Content-Length": str(len(response.content))
                 }
-                
-                // Audio-Blob erstellen
-                const audioBlob = new Blob([audioArray], { type: 'audio/wav' });
-                const audioUrl = URL.createObjectURL(audioBlob);
-                const audio = new Audio(audioUrl);
-                
-                // Audio-Event Listener
-                audio.onloadstart = () => {
-                    console.log('🔄 Audio wird geladen...');
-                };
-                
-                audio.oncanplay = () => {
-                    console.log('✅ Audio bereit zum Abspielen');
-                };
-                
-                audio.onplay = () => {
-                    console.log('🔊 Audio startet - LiveLink läuft parallel auf Server');
-                    setStatus('🎊 Perfekte Synchronisation: Audio + LiveLink!', 'speaking');
-                };
-                
-                audio.ontimeupdate = () => {
-                    // Optional: Progress tracking
-                    const progress = (audio.currentTime / audio.duration) * 100;
-                    if (progress > 0) {
-                        setStatus(`🎵 Synchron: ${Math.round(progress)}% | Audio + LiveLink`, 'speaking');
-                    }
-                };
-                
-                audio.onended = () => {
-                    console.log('🔊 Audio beendet - Synchronisation komplett');
-                    setStatus('✅ Perfekte Synchronisation beendet', 'success');
-                    setTimeout(() => {
-                        setStatus('Bereit • Perfekte Audio+LiveLink Sync aktiv', 'ready');
-                    }, 2000);
-                    URL.revokeObjectURL(audioUrl);
-                };
-                
-                audio.onerror = (e) => {
-                    console.error('❌ Audio Fehler:', e);
-                    setStatus('Audio-Fehler - LiveLink läuft weiter', 'error');
-                    URL.revokeObjectURL(audioUrl);
-                };
-                
-                // Audio abspielen (gleichzeitig mit LiveLink auf Server)
-                try {
-                    await audio.play();
-                    console.log('🚀 Audio erfolgreich gestartet');
-                } catch (playError) {
-                    console.error('❌ Audio play Fehler:', playError);
-                    setStatus('Browser blockiert Audio - LiveLink aktiv', 'warning');
-                    
-                    // Fallback: User Interaction erforderlich
-                    addMessage('system', 'Klicken Sie hier um Audio zu aktivieren', 'warning');
-                    document.addEventListener('click', async () => {
-                        try {
-                            await audio.play();
-                            console.log('🔊 Audio nach User-Interaction gestartet');
-                        } catch (e) {
-                            console.error('Audio weiterhin blockiert:', e);
-                        }
-                    }, { once: true });
-                }
-                
-            } else {
-                console.log('✅ LiveLink Animation gesendet (ohne Audio-Sync)');
-                setStatus('Avatar Animation gesendet', 'success');
-                setTimeout(() => {
-                    setStatus('Bereit • NeuroSync + ElevenLabs System verbunden', 'ready');
-                }, 3000);
-            }
+            )
+        else:
+            print(f"❌ Audio-Generierung fehlgeschlagen: {response.status_code}")
+            return jsonify({"error": "Audio-Generierung fehlgeschlagen"}), 500
             
-            // Avatar-Antwort zur Chat-Historie hinzufügen
-            addMessage('avatar', text, 'synchronized');
+    except requests.exceptions.ConnectionError:
+        print("❌ Verbindung zum NeuroSync-Server nicht möglich")
+        return jsonify({"error": "Verbindung zum NeuroSync-Server nicht möglich"}), 500
+    except Exception as e:
+        print(f"❌ Audio-Fehler: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/transcribe', methods=['POST'])
+def transcribe():
+    try:
+        if 'audio' not in request.files:
+            return jsonify({"error": "Keine Audio-Datei"}), 400
             
-        } else {
-            console.error('❌ NeuroSync Fehler:', response.status, response.statusText);
-            setStatus('NeuroSync Server Fehler', 'error');
-            addMessage('system', `Entschuldigung, Server-Fehler (${response.status}). Versuchen Sie es erneut.`, 'error');
+        audio_file = request.files['audio']
+        audio_data = audio_file.read()
+        
+        print(f"🎤 Transkribiere Audio mit ElevenLabs: {len(audio_data)} bytes")
+        
+        files = {
+            'file': ('audio.wav', audio_data, 'audio/wav')
         }
         
-    } catch (error) {
-        console.error('❌ Synchronisation Fehler:', error);
-        setStatus('Verbindungsfehler - Prüfen Sie die Internetverbindung', 'error');
-        addMessage('system', 'Verbindung zum Server fehlgeschlagen. Bitte versuchen Sie es erneut.', 'error');
-    }
-}
-
-// Voice Recording Functions
-async function toggleRecording() {
-    const micButton = document.getElementById('micButton');
-    
-    if (!isRecording) {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ 
-                audio: {
-                    echoCancellation: true,
-                    noiseSuppression: true,
-                    sampleRate: 44100
-                }
-            });
-            
-            mediaRecorder = new MediaRecorder(stream, {
-                mimeType: 'audio/webm;codecs=opus'
-            });
-            audioChunks = [];
-            
-            mediaRecorder.ondataavailable = (event) => {
-                if (event.data.size > 0) {
-                    audioChunks.push(event.data);
-                }
-            };
-            
-            mediaRecorder.onstop = async () => {
-                console.log('🎤 Aufnahme beendet, Chunks:', audioChunks.length);
-                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                console.log('🎤 Audio-Blob Größe:', audioBlob.size, 'bytes');
-                await transcribeAudio(audioBlob);
-                
-                // Cleanup
-                stream.getTracks().forEach(track => {
-                    track.stop();
-                    console.log('🔇 Audio-Track gestoppt');
-                });
-            };
-            
-            mediaRecorder.onerror = (event) => {
-                console.error('❌ MediaRecorder Fehler:', event.error);
-                setStatus('Aufnahme-Fehler', 'error');
-            };
-            
-            mediaRecorder.start(1000); // 1 Sekunde Chunks
-            isRecording = true;
-            micButton.textContent = '🔴 Stop';
-            micButton.classList.add('recording');
-            setStatus('🎤 Aufnahme läuft... (Sprechen Sie jetzt)', 'recording');
-            
-            console.log('🎤 Aufnahme gestartet');
-            
-        } catch (error) {
-            console.error('❌ Mikrofon Fehler:', error);
-            if (error.name === 'NotAllowedError') {
-                setStatus('Mikrofon-Berechtigung verweigert', 'error');
-                addMessage('system', 'Bitte erlauben Sie Mikrofon-Zugriff für Spracheingabe.', 'error');
-            } else if (error.name === 'NotFoundError') {
-                setStatus('Kein Mikrofon gefunden', 'error');
-                addMessage('system', 'Kein Mikrofon erkannt. Prüfen Sie Ihre Hardware.', 'error');
-            } else {
-                setStatus('Mikrofon-Fehler', 'error');
-                addMessage('system', `Mikrofon-Fehler: ${error.message}`, 'error');
-            }
-        }
-    } else {
-        if (mediaRecorder && mediaRecorder.state === 'recording') {
-            mediaRecorder.stop();
-            console.log('🎤 Stoppe Aufnahme...');
-        }
-        isRecording = false;
-        micButton.textContent = '🎤 Aufnehmen';
-        micButton.classList.remove('recording');
-        setStatus('🔄 Transkribiere Sprache mit ElevenLabs...', 'processing');
-    }
-}
-
-async function transcribeAudio(audioBlob) {
-    try {
-        console.log('📤 Sende Audio zur Transkription...');
-        const formData = new FormData();
-        formData.append('audio', audioBlob, 'recording.webm');
-        
-        const response = await fetch('/api/transcribe', {
-            method: 'POST',
-            body: formData
-        });
-        
-        console.log('📥 Transkriptions-Response:', response.status);
-        
-        if (response.ok) {
-            const result = await response.json();
-            console.log('📝 Transkriptions-Ergebnis:', result);
-            const transcription = result.transcription || '';
-            
-            if (transcription.trim()) {
-                document.getElementById('textInput').value = transcription;
-                setStatus('✅ Sprache erkannt: "' + transcription.substring(0, 30) + '..."', 'success');
-                addMessage('system', `Sprache erkannt: "${transcription}"`, 'transcription');
-                
-                // Automatisch senden nach kurzer Verzögerung
-                setTimeout(() => {
-                    sendMessage();
-                }, 1000);
-            } else {
-                setStatus('Keine Sprache erkannt - Versuchen Sie es erneut', 'warning');
-                addMessage('system', 'Keine Sprache erkannt. Sprechen Sie deutlicher oder versuchen Sie es erneut.', 'warning');
-            }
-        } else {
-            const errorText = await response.text();
-            console.error('❌ Transkriptions-Fehler:', response.status, errorText);
-            setStatus('Transkription fehlgeschlagen', 'error');
-            addMessage('system', 'Spracherkennung fehlgeschlagen. Versuchen Sie es erneut.', 'error');
+        data = {
+            'model_id': 'scribe_v1'
         }
         
-    } catch (error) {
-        console.error('❌ Transkriptions-Fehler:', error);
-        setStatus('Transkriptionsfehler', 'error');
-        addMessage('system', 'Verbindungsfehler bei Spracherkennung.', 'error');
-    }
-}
-
-// Utility Functions
-function clearChat() {
-    const messagesDiv = document.getElementById('chatMessages');
-    messagesDiv.innerHTML = `
-        <div class="message avatar-message">
-            <strong>Avatar</strong>
-            Hallo! Ich bin dein KI-Avatar mit perfekter Audio+LiveLink Synchronisation! 
-            Schreibe eine Nachricht oder nutze das Mikrofon zum Chatten!
-            <small>System bereit</small>
-        </div>
-    `;
-    setStatus('Chat gelöscht • Bereit für perfekte Synchronisation', 'ready');
-    console.log('🧹 Chat gelöscht');
-}
-
-function toggleStream() {
-    const iframe = document.getElementById('pixelStreamIframe');
-    if (iframe) {
-        iframe.style.display = iframe.style.display === 'none' ? 'block' : 'none';
-        const visible = iframe.style.display !== 'none';
-        setStatus(visible ? 'Avatar-Stream sichtbar' : 'Avatar-Stream ausgeblendet', 'info');
-        console.log('👁️ Avatar-Stream:', visible ? 'sichtbar' : 'ausgeblendet');
-    }
-}
-
-function resetStream() {
-    const iframe = document.getElementById('pixelStreamIframe');
-    if (iframe) {
-        const originalSrc = iframe.src;
-        iframe.src = '';
-        setTimeout(() => {
-            iframe.src = originalSrc;
-        }, 100);
-        setStatus('Avatar-Stream zurückgesetzt', 'info');
-        console.log('🔄 Avatar-Stream zurückgesetzt');
-    }
-}
-
-// Event Listeners
-document.addEventListener('DOMContentLoaded', function() {
-    const textInput = document.getElementById('textInput');
-    
-    if (textInput) {
-        // Enter-Taste für Senden
-        textInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage();
-            }
-        });
-        
-        // Focus auf Input-Feld
-        textInput.focus();
-    }
-    
-    // Health Check beim Laden
-    checkSystemHealth();
-    setStatus('System geladen • Bereit für perfekte Audio+LiveLink Synchronisation', 'ready');
-    
-    console.log('🎉 NeuroSync Avatar Chat mit perfekter Synchronisation geladen!');
-    console.log('🎯 Features: Audio+LiveLink Sync, Deutsche Franzi TTS, Spracheingabe');
-});
-
-// System Health Check
-async function checkSystemHealth() {
-    try {
-        console.log('🔍 Prüfe System-Status...');
-        const response = await fetch('/health');
-        if (response.ok) {
-            const health = await response.json();
-            console.log('💚 System Health:', health);
-            
-            if (health.neurosync_server === 'offline') {
-                setStatus('⚠️ NeuroSync Server offline - Prüfen Sie die Verbindung', 'error');
-                addMessage('system', 'NeuroSync AI Server ist nicht erreichbar.', 'error');
-            } else if (health.sync_mode === 'perfect_audio_livelink_sync') {
-                setStatus('✅ Perfekte Audio+LiveLink Synchronisation aktiv', 'ready');
-            } else {
-                setStatus('✅ NeuroSync System verbunden', 'ready');
-            }
-        } else {
-            console.warn('⚠️ Health Check fehlgeschlagen:', response.status);
-            setStatus('System-Status unbekannt', 'warning');
+        headers = {
+            'xi-api-key': 'sk_9739f15bbe43d93268abcba00d20ab63973945a02a36723a'
         }
-    } catch (error) {
-        console.error('❌ Health Check Fehler:', error);
-        setStatus('System-Verbindung prüfen...', 'warning');
-    }
-}
+        
+        response = requests.post(
+            'https://api.elevenlabs.io/v1/speech-to-text',
+            files=files,
+            data=data,
+            headers=headers,
+            timeout=30
+        )
+        
+        print(f"🔊 ElevenLabs STT Antwort: {response.status_code}")
+        
+        if response.status_code == 200:
+            result = response.json()
+            print(f"🔍 Komplette ElevenLabs Response: {result}")
+            
+            transcription = (
+                result.get('transcription') or
+                result.get('text') or  
+                result.get('transcript') or
+                result.get('content') or
+                ""
+            )
+            
+            print(f"✅ Gefundene Transkription: '{transcription}'")
+            
+            return jsonify({
+                "transcription": transcription,
+                "status": "success"
+            })
+        else:
+            print(f"❌ ElevenLabs STT fehlgeschlagen: {response.status_code}")
+            return jsonify({"error": f"ElevenLabs API Fehler: {response.status_code}"}), 500
+        
+    except Exception as e:
+        print(f"❌ Transkriptions-Fehler: {e}")
+        return jsonify({"error": str(e)}), 500
 
-// Auto-Health Check alle 30 Sekunden
-setInterval(checkSystemHealth, 30000);
-
-// Browser-Kompatibilität prüfen
-function checkBrowserSupport() {
-    const features = {
-        'Web Audio API': 'AudioContext' in window || 'webkitAudioContext' in window,
-        'Media Recorder': 'MediaRecorder' in window,
-        'getUserMedia': navigator.mediaDevices && navigator.mediaDevices.getUserMedia,
-        'Fetch API': 'fetch' in window,
-        'Promise': 'Promise' in window
-    };
+@app.route('/health')
+def health():
+    try:
+        response = requests.get(f"{NEUROSYNC_SERVER}/", timeout=5)
+        neurosync_status = "online" if response.status_code == 200 else "offline"
+        
+        try:
+            audio_response = requests.get(f"{NEUROSYNC_AUDIO_SERVER}/", timeout=5)
+            audio_status = "online" if audio_response.status_code == 200 else "offline"
+        except:
+            audio_status = "offline"
+        
+        available_voices = list(VOICE_MAPPING.keys())
+        
+    except Exception as e:
+        neurosync_status = "offline"
+        audio_status = "offline"
+        available_voices = []
     
-    console.log('🌐 Browser-Support:', features);
-    
-    const unsupported = Object.entries(features)
-        .filter(([feature, supported]) => !supported)
-        .map(([feature]) => feature);
-    
-    if (unsupported.length > 0) {
-        console.warn('⚠️ Nicht unterstützte Features:', unsupported);
-        addMessage('system', `Browser-Warnung: ${unsupported.join(', ')} nicht verfügbar.`, 'warning');
-    }
-}
+    return jsonify({
+        "status": "Web-Interface mit perfekter Audio+LiveLink Synchronisation",
+        "neurosync_server": neurosync_status,
+        "audio_server": audio_status,
+        "server_url": NEUROSYNC_SERVER,
+        "audio_server_url": NEUROSYNC_AUDIO_SERVER,
+        "available_voices": available_voices,
+        "default_voice": "franzi",
+        "voice_mapping": VOICE_MAPPING,
+        "sync_mode": "perfect_audio_livelink_sync",
+        "livelink_integration": "enabled"
+    })
 
-// Browser-Support beim Laden prüfen
-setTimeout(checkBrowserSupport, 1000);
+@app.route('/api/voices')
+def get_voices():
+    return jsonify({
+        "voices": VOICE_MAPPING,
+        "default": "franzi",
+        "description": {
+            "franzi": "Deutsche Stimme (Standard)",
+            "bf_isabella": "Englische Stimme - Bella",
+            "af_heart": "Englische Stimme - Rachel"
+        }
+    })
 
-// Global Error Handler
-window.addEventListener('error', (event) => {
-    console.error('🔥 Global Error:', event.error);
-    setStatus('Unerwarteter Fehler aufgetreten', 'error');
-});
+@app.route('/api/set_voice', methods=['POST'])
+def set_voice():
+    try:
+        data = request.get_json()
+        voice = data.get('voice', 'franzi')
+        
+        if voice in VOICE_MAPPING:
+            return jsonify({
+                "status": "success",
+                "voice": voice,
+                "voice_id": VOICE_MAPPING[voice],
+                "message": f"Stimme auf {voice} gesetzt"
+            })
+        else:
+            return jsonify({
+                "status": "error",
+                "message": "Unbekannte Stimme",
+                "available_voices": list(VOICE_MAPPING.keys())
+            }), 400
+            
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-// Unhandled Promise Rejections
-window.addEventListener('unhandledrejection', (event) => {
-    console.error('🔥 Unhandled Promise Rejection:', event.reason);
-    setStatus('Asynchroner Fehler aufgetreten', 'error');
-});
-
-console.log('🚀 NeuroSync Avatar Chat System vollständig initialisiert');
-console.log('🎭 Features: Perfekte Audio+LiveLink Sync, ElevenLabs v2, Deutsche Franzi');
-console.log('🔧 Debug-Modus: Console-Logs aktiviert');
+if __name__ == '__main__':
+    print("🚀 NeuroSync Web-Interface mit perfekter Audio+LiveLink Synchronisation...")
+    print("🎯 NeuroSync Server:", NEUROSYNC_SERVER)
+    print("🎤 NeuroSync Audio Server:", NEUROSYNC_AUDIO_SERVER)
+    print("🔊 Standard-Stimme: Franzi (Deutsche TTS)")
+    print("🔗 LiveLink Integration: AKTIVIERT")
+    print("🎵 Sync Modus: Perfekte Audio+LiveLink Synchronisation")
+    print("🌐 Web-Interface verfügbar unter:")
+    print("   - Lokal: http://127.0.0.1:9000")
+    print("   - HTTPS: https://neurosync.aura42.de")
+    print("   - HTTPS: https://avatar.aura42.de")
+    print("📋 Verfügbare Stimmen:", list(VOICE_MAPPING.keys()))
+    print("🎊 PERFEKTE SYNCHRONISATION: Audio + LiveLink zur exakt gleichen Zeit!")
+    app.run(host='127.0.0.1', port=9000, debug=False)

@@ -1,13 +1,40 @@
-﻿let isRecording = false;
+﻿// NeuroSync Avatar Chat - Perfect Audio+LiveLink Synchronization
+let isRecording = false;
 let mediaRecorder;
 let audioChunks = [];
 
-// URL für verschiedene Umgebungen
-const PIXEL_STREAM_URL = window.location.hostname === 'localhost'
-    ? 'http://148.251.21.122/'
-    : 'https://pixel.aura42.de/';
+// Status Management
+function setStatus(message, type = 'info') {
+    const statusEl = document.getElementById('status');
+    statusEl.textContent = message;
+    statusEl.className = `status ${type}`;
+}
 
-// Text-to-Avatar function with Franzi Audio (KORRIGIERT)
+function showAvatarActivity() {
+    setStatus('🎭 Avatar spricht...', 'speaking');
+}
+
+function addMessage(sender, text, type = '') {
+    const messagesDiv = document.getElementById('chatMessages');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${sender}-message ${type}`;
+
+    const timestamp = new Date().toLocaleTimeString('de-DE', {
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+
+    messageDiv.innerHTML = `
+        <strong>${sender === 'user' ? 'Du' : 'Avatar'}</strong>
+        ${text}
+        <small>${timestamp}</small>
+    `;
+
+    messagesDiv.appendChild(messageDiv);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+// Perfect Synchronized Message Sending
 async function sendMessage() {
     const textInput = document.getElementById('textInput');
     const text = textInput.value.trim();
@@ -16,300 +43,370 @@ async function sendMessage() {
 
     addMessage('user', text);
     textInput.value = '';
-    setStatus('Verarbeitung mit ElevenLabs + NeuroSync...', 'processing');
-
-    // Avatar Animation Hinweis
+    setStatus('🎯 Perfekte Synchronisation wird vorbereitet...', 'processing');
     showAvatarActivity();
 
     try {
-        // 1. Text an NeuroSync senden (für Blendshapes)
-        const neuroResponse = await fetch('/api/synthesize_and_blendshapes', {
+        // Sende Text an NeuroSync für Audio+LiveLink Generierung
+        console.log('📤 Sende an NeuroSync:', text);
+        const response = await fetch('/api/synthesize_and_blendshapes', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ text: text, voice: 'franzi' })
         });
 
-        if (neuroResponse.ok) {
-            // 2. Audio separat holen und abspielen
-            const audioResponse = await fetch('/api/get_audio', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: text, voice: 'franzi' })
-            });
+        if (response.ok) {
+            const result = await response.json();
+            console.log('📥 NeuroSync Response:', result);
 
-            if (audioResponse.ok) {
-                // Audio-Blob erstellen und abspielen
-                const audioBlob = await audioResponse.blob();
+            // Prüfe ob Audio-Daten in Response enthalten sind
+            if (result.audio_data && result.play_audio) {
+                console.log(`🎯 Perfekte Sync: Audio ${result.audio_length}s + LiveLink gestartet`);
+
+                // Audio aus Base64 dekodieren
+                const audioBytes = atob(result.audio_data);
+                const audioArray = new Uint8Array(audioBytes.length);
+                for (let i = 0; i < audioBytes.length; i++) {
+                    audioArray[i] = audioBytes.charCodeAt(i);
+                }
+
+                // Audio-Blob erstellen
+                const audioBlob = new Blob([audioArray], { type: 'audio/wav' });
                 const audioUrl = URL.createObjectURL(audioBlob);
                 const audio = new Audio(audioUrl);
 
-                // Audio abspielen
-                audio.play().then(() => {
-                    console.log('🎵 Franzi Audio wird abgespielt');
-                }).catch(error => {
-                    console.error('Audio-Wiedergabe Fehler:', error);
-                    addMessage('system', '⚠️ Audio-Wiedergabe fehlgeschlagen. Browser-Berechtigungen prüfen.');
-                });
-
-                addMessage('avatar', `🔊 Franzi spricht: "${text}"`);
-                setStatus('🎵 Avatar spricht...', 'success');
-
-                // Status nach Audio-Ende zurücksetzen
-                audio.onended = () => {
-                    setStatus('Bereit • ElevenLabs + NeuroSync System verbunden', '');
+                // Audio-Event Listener
+                audio.onloadstart = () => {
+                    console.log('🔄 Audio wird geladen...');
                 };
 
-                // Memory cleanup
-                setTimeout(() => URL.revokeObjectURL(audioUrl), 10000);
+                audio.oncanplay = () => {
+                    console.log('✅ Audio bereit zum Abspielen');
+                };
+
+                audio.onplay = () => {
+                    console.log('🔊 Audio startet - LiveLink läuft parallel auf Server');
+                    setStatus('🎊 Perfekte Synchronisation: Audio + LiveLink!', 'speaking');
+                };
+
+                audio.ontimeupdate = () => {
+                    // Optional: Progress tracking
+                    const progress = (audio.currentTime / audio.duration) * 100;
+                    if (progress > 0) {
+                        setStatus(`🎵 Synchron: ${Math.round(progress)}% | Audio + LiveLink`, 'speaking');
+                    }
+                };
+
+                audio.onended = () => {
+                    console.log('🔊 Audio beendet - Synchronisation komplett');
+                    setStatus('✅ Perfekte Synchronisation beendet', 'success');
+                    setTimeout(() => {
+                        setStatus('Bereit • Perfekte Audio+LiveLink Sync aktiv', 'ready');
+                    }, 2000);
+                    URL.revokeObjectURL(audioUrl);
+                };
+
+                audio.onerror = (e) => {
+                    console.error('❌ Audio Fehler:', e);
+                    setStatus('Audio-Fehler - LiveLink läuft weiter', 'error');
+                    URL.revokeObjectURL(audioUrl);
+                };
+
+                // Audio abspielen (gleichzeitig mit LiveLink auf Server)
+                try {
+                    await audio.play();
+                    console.log('🚀 Audio erfolgreich gestartet');
+                } catch (playError) {
+                    console.error('❌ Audio play Fehler:', playError);
+                    setStatus('Browser blockiert Audio - LiveLink aktiv', 'warning');
+
+                    // Fallback: User Interaction erforderlich
+                    addMessage('system', 'Klicken Sie hier um Audio zu aktivieren', 'warning');
+                    document.addEventListener('click', async () => {
+                        try {
+                            await audio.play();
+                            console.log('🔊 Audio nach User-Interaction gestartet');
+                        } catch (e) {
+                            console.error('Audio weiterhin blockiert:', e);
+                        }
+                    }, { once: true });
+                }
+
             } else {
-                throw new Error('Audio-Generierung fehlgeschlagen');
+                console.log('✅ LiveLink Animation gesendet (ohne Audio-Sync)');
+                setStatus('Avatar Animation gesendet', 'success');
+                setTimeout(() => {
+                    setStatus('Bereit • NeuroSync + ElevenLabs System verbunden', 'ready');
+                }, 3000);
             }
+
+            // Avatar-Antwort zur Chat-Historie hinzufügen
+            addMessage('avatar', text, 'synchronized');
+
         } else {
-            throw new Error('NeuroSync-Verarbeitung fehlgeschlagen');
+            console.error('❌ NeuroSync Fehler:', response.status, response.statusText);
+            setStatus('NeuroSync Server Fehler', 'error');
+            addMessage('system', `Entschuldigung, Server-Fehler (${response.status}). Versuchen Sie es erneut.`, 'error');
         }
+
     } catch (error) {
-        console.error('Fehler:', error);
-        setStatus('Fehler: ' + error.message, 'error');
-        addMessage('system', '❌ Fehler: ' + error.message);
+        console.error('❌ Synchronisation Fehler:', error);
+        setStatus('Verbindungsfehler - Prüfen Sie die Internetverbindung', 'error');
+        addMessage('system', 'Verbindung zum Server fehlgeschlagen. Bitte versuchen Sie es erneut.', 'error');
     }
 }
 
-// Pixel Stream Controls
-function toggleStream() {
-    const iframe = document.getElementById('pixelStreamIframe');
-    const container = iframe.parentElement;
-
-    if (iframe.style.display === 'none') {
-        iframe.style.display = 'block';
-        container.classList.remove('loading');
-        console.log('🎮 Pixel Stream aktiviert');
-    } else {
-        iframe.style.display = 'none';
-        container.classList.add('loading');
-        console.log('🎮 Pixel Stream deaktiviert');
-    }
-}
-
-function resetStream() {
-    const iframe = document.getElementById('pixelStreamIframe');
-    iframe.src = iframe.src; // Reload iframe
-    console.log('🔄 Pixel Stream zurückgesetzt');
-}
-
-function showAvatarActivity() {
-    const container = document.querySelector('.pixel-stream-container');
-    if (container) {
-        container.style.border = '2px solid #00aaff';
-
-        setTimeout(() => {
-            container.style.border = '2px solid #444';
-        }, 3000);
-    }
-}
-
-// Responsive iframe anpassen
-function adjustStreamQuality() {
-    const iframe = document.getElementById('pixelStreamIframe');
-    if (iframe) {
-        const width = iframe.offsetWidth;
-
-        if (width < 600) {
-            iframe.src = PIXEL_STREAM_URL + '?quality=low';
-        } else {
-            iframe.src = PIXEL_STREAM_URL + '?quality=high';
-        }
-    }
-}
-
-// Voice recording (Deutsch)
+// Voice Recording Functions
 async function toggleRecording() {
     const micButton = document.getElementById('micButton');
 
     if (!isRecording) {
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaRecorder = new MediaRecorder(stream);
+            const stream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    sampleRate: 44100
+                }
+            });
+
+            mediaRecorder = new MediaRecorder(stream, {
+                mimeType: 'audio/webm;codecs=opus'
+            });
             audioChunks = [];
 
-            mediaRecorder.ondataavailable = event => {
-                audioChunks.push(event.data);
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    audioChunks.push(event.data);
+                }
             };
 
             mediaRecorder.onstop = async () => {
-                const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-                await sendAudio(audioBlob);
+                console.log('🎤 Aufnahme beendet, Chunks:', audioChunks.length);
+                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                console.log('🎤 Audio-Blob Größe:', audioBlob.size, 'bytes');
+                await transcribeAudio(audioBlob);
+
+                // Cleanup
+                stream.getTracks().forEach(track => {
+                    track.stop();
+                    console.log('🔇 Audio-Track gestoppt');
+                });
             };
 
-            mediaRecorder.start();
+            mediaRecorder.onerror = (event) => {
+                console.error('❌ MediaRecorder Fehler:', event.error);
+                setStatus('Aufnahme-Fehler', 'error');
+            };
+
+            mediaRecorder.start(1000); // 1 Sekunde Chunks
             isRecording = true;
-            micButton.textContent = '⏹️ Stopp';
+            micButton.textContent = '🔴 Stop';
             micButton.classList.add('recording');
-            setStatus('Aufnahme läuft...', 'processing');
+            setStatus('🎤 Aufnahme läuft... (Sprechen Sie jetzt)', 'recording');
+
+            console.log('🎤 Aufnahme gestartet');
 
         } catch (error) {
-            console.error('Mikrofon-Fehler:', error);
-            alert('Mikrofon-Zugriff verweigert. Bitte Mikrofon-Berechtigung aktivieren und erneut versuchen.');
+            console.error('❌ Mikrofon Fehler:', error);
+            if (error.name === 'NotAllowedError') {
+                setStatus('Mikrofon-Berechtigung verweigert', 'error');
+                addMessage('system', 'Bitte erlauben Sie Mikrofon-Zugriff für Spracheingabe.', 'error');
+            } else if (error.name === 'NotFoundError') {
+                setStatus('Kein Mikrofon gefunden', 'error');
+                addMessage('system', 'Kein Mikrofon erkannt. Prüfen Sie Ihre Hardware.', 'error');
+            } else {
+                setStatus('Mikrofon-Fehler', 'error');
+                addMessage('system', `Mikrofon-Fehler: ${error.message}`, 'error');
+            }
         }
     } else {
-        mediaRecorder.stop();
-        mediaRecorder.stream.getTracks().forEach(track => track.stop());
+        if (mediaRecorder && mediaRecorder.state === 'recording') {
+            mediaRecorder.stop();
+            console.log('🎤 Stoppe Aufnahme...');
+        }
         isRecording = false;
         micButton.textContent = '🎤 Aufnehmen';
         micButton.classList.remove('recording');
-        setStatus('Sprache wird verarbeitet...', 'processing');
+        setStatus('🔄 Transkribiere Sprache mit ElevenLabs...', 'processing');
     }
 }
 
-// Send audio to server
-async function sendAudio(audioBlob) {
+async function transcribeAudio(audioBlob) {
     try {
+        console.log('📤 Sende Audio zur Transkription...');
         const formData = new FormData();
-        formData.append('audio', audioBlob);
+        formData.append('audio', audioBlob, 'recording.webm');
 
-        // Zuerst mit Whisper transkribieren
-        const transcribeResponse = await fetch('/api/transcribe', {
+        const response = await fetch('/api/transcribe', {
             method: 'POST',
             body: formData
         });
 
-        if (transcribeResponse.ok) {
-            const transcription = await transcribeResponse.json();
-            const text = transcription.transcription;
+        console.log('📥 Transkriptions-Response:', response.status);
 
-            if (text && text.trim()) {
-                // Transkribierten Text zum Chat hinzufügen und verarbeiten
-                addMessage('user', `🎤 ${text}`);
+        if (response.ok) {
+            const result = await response.json();
+            console.log('📝 Transkriptions-Ergebnis:', result);
+            const transcription = result.transcription || '';
 
-                // An NeuroSync mit Franzi Audio senden
-                await sendMessageWithText(text);
+            if (transcription.trim()) {
+                document.getElementById('textInput').value = transcription;
+                setStatus('✅ Sprache erkannt: "' + transcription.substring(0, 30) + '..."', 'success');
+                addMessage('system', `Sprache erkannt: "${transcription}"`, 'transcription');
+
+                // Automatisch senden nach kurzer Verzögerung
+                setTimeout(() => {
+                    sendMessage();
+                }, 1000);
             } else {
-                setStatus('Keine Sprache erkannt. Erneut versuchen.', 'error');
+                setStatus('Keine Sprache erkannt - Versuchen Sie es erneut', 'warning');
+                addMessage('system', 'Keine Sprache erkannt. Sprechen Sie deutlicher oder versuchen Sie es erneut.', 'warning');
             }
         } else {
-            throw new Error('Spracherkennung fehlgeschlagen');
+            const errorText = await response.text();
+            console.error('❌ Transkriptions-Fehler:', response.status, errorText);
+            setStatus('Transkription fehlgeschlagen', 'error');
+            addMessage('system', 'Spracherkennung fehlgeschlagen. Versuchen Sie es erneut.', 'error');
         }
+
     } catch (error) {
-        console.error('Audio-Verarbeitungsfehler:', error);
-        setStatus('Fehler bei Audio-Verarbeitung: ' + error.message, 'error');
-        addMessage('system', '❌ Audio-Verarbeitungsfehler: ' + error.message);
+        console.error('❌ Transkriptions-Fehler:', error);
+        setStatus('Transkriptionsfehler', 'error');
+        addMessage('system', 'Verbindungsfehler bei Spracherkennung.', 'error');
     }
 }
 
-// Helper function for audio processing with Franzi
-async function sendMessageWithText(text) {
-    setStatus('Verarbeitung mit ElevenLabs + NeuroSync...', 'processing');
-
-    // Avatar Animation Hinweis
-    showAvatarActivity();
-
-    try {
-        // An NeuroSync senden
-        const neuroResponse = await fetch('/api/synthesize_and_blendshapes', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: text, voice: 'franzi' })
-        });
-
-        if (neuroResponse.ok) {
-            // Audio holen und abspielen
-            const audioResponse = await fetch('/api/get_audio', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: text, voice: 'franzi' })
-            });
-
-            if (audioResponse.ok) {
-                const audioBlob = await audioResponse.blob();
-                const audioUrl = URL.createObjectURL(audioBlob);
-                const audio = new Audio(audioUrl);
-
-                audio.play().then(() => {
-                    console.log('🎵 Franzi Audio wird abgespielt');
-                }).catch(error => {
-                    console.error('Audio-Wiedergabe Fehler:', error);
-                });
-
-                addMessage('avatar', `🔊 Franzi spricht: "${text}"`);
-                setStatus('🎵 Avatar spricht...', 'success');
-
-                audio.onended = () => {
-                    setStatus('Bereit • ElevenLabs + NeuroSync System verbunden', '');
-                };
-
-                setTimeout(() => URL.revokeObjectURL(audioUrl), 10000);
-            } else {
-                throw new Error('Audio-Generierung fehlgeschlagen');
-            }
-        } else {
-            throw new Error('NeuroSync-Verarbeitung fehlgeschlagen');
-        }
-    } catch (error) {
-        console.error('Fehler:', error);
-        setStatus('Fehler: ' + error.message, 'error');
-        addMessage('system', '❌ Fehler: ' + error.message);
-    }
-}
-
-// Add message to chat (Deutsch)
-function addMessage(sender, text) {
-    const chatMessages = document.getElementById('chatMessages');
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `message ${sender}-message`;
-
-    const timestamp = new Date().toLocaleTimeString('de-DE');
-    const senderName = sender === 'user' ? 'Du' : sender === 'avatar' ? 'Avatar' : 'System';
-
-    messageDiv.innerHTML = `
-        <strong>${senderName}</strong>
-        ${text}
-        <small>${timestamp}</small>
-    `;
-
-    chatMessages.appendChild(messageDiv);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-}
-
-// Set status with styling
-function setStatus(message, type = '') {
-    const statusElement = document.getElementById('status');
-    statusElement.textContent = message;
-    statusElement.className = `status ${type}`;
-}
-
-// Clear chat (Deutsch)
+// Utility Functions
 function clearChat() {
-    const chatMessages = document.getElementById('chatMessages');
-    chatMessages.innerHTML = `
+    const messagesDiv = document.getElementById('chatMessages');
+    messagesDiv.innerHTML = `
         <div class="message avatar-message">
             <strong>Avatar</strong>
-            Chat gelöscht! Bereit für eine neue Unterhaltung.
-            <small>System zurückgesetzt</small>
+            Hallo! Ich bin dein KI-Avatar mit perfekter Audio+LiveLink Synchronisation! 
+            Schreibe eine Nachricht oder nutze das Mikrofon zum Chatten!
+            <small>System bereit</small>
         </div>
     `;
+    setStatus('Chat gelöscht • Bereit für perfekte Synchronisation', 'ready');
+    console.log('🧹 Chat gelöscht');
 }
 
-// Enter key support
+function toggleStream() {
+    const iframe = document.getElementById('pixelStreamIframe');
+    if (iframe) {
+        iframe.style.display = iframe.style.display === 'none' ? 'block' : 'none';
+        const visible = iframe.style.display !== 'none';
+        setStatus(visible ? 'Avatar-Stream sichtbar' : 'Avatar-Stream ausgeblendet', 'info');
+        console.log('👁️ Avatar-Stream:', visible ? 'sichtbar' : 'ausgeblendet');
+    }
+}
+
+function resetStream() {
+    const iframe = document.getElementById('pixelStreamIframe');
+    if (iframe) {
+        const originalSrc = iframe.src;
+        iframe.src = '';
+        setTimeout(() => {
+            iframe.src = originalSrc;
+        }, 100);
+        setStatus('Avatar-Stream zurückgesetzt', 'info');
+        console.log('🔄 Avatar-Stream zurückgesetzt');
+    }
+}
+
+// Event Listeners
 document.addEventListener('DOMContentLoaded', function () {
-    document.getElementById('textInput').addEventListener('keypress', function (e) {
-        if (e.key === 'Enter') {
-            sendMessage();
-        }
-    });
+    const textInput = document.getElementById('textInput');
 
-    // Initialize
-    console.log('🚀 NeuroSync Avatar Chat Interface geladen');
-
-    // Server-Gesundheit prüfen
-    fetch('/health')
-        .then(response => response.json())
-        .then(data => {
-            if (data.neurosync_server === 'online') {
-                setStatus('Bereit • ElevenLabs + NeuroSync System verbunden', 'success');
-            } else {
-                setStatus('Warnung: NeuroSync Server offline', 'error');
+    if (textInput) {
+        // Enter-Taste für Senden
+        textInput.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
             }
-        })
-        .catch(() => {
-            setStatus('Warnung: Verbindung zum Backend nicht möglich', 'error');
         });
+
+        // Focus auf Input-Feld
+        textInput.focus();
+    }
+
+    // Health Check beim Laden
+    checkSystemHealth();
+    setStatus('System geladen • Bereit für perfekte Audio+LiveLink Synchronisation', 'ready');
+
+    console.log('🎉 NeuroSync Avatar Chat mit perfekter Synchronisation geladen!');
+    console.log('🎯 Features: Audio+LiveLink Sync, Deutsche Franzi TTS, Spracheingabe');
 });
+
+// System Health Check
+async function checkSystemHealth() {
+    try {
+        console.log('🔍 Prüfe System-Status...');
+        const response = await fetch('/health');
+        if (response.ok) {
+            const health = await response.json();
+            console.log('💚 System Health:', health);
+
+            if (health.neurosync_server === 'offline') {
+                setStatus('⚠️ NeuroSync Server offline - Prüfen Sie die Verbindung', 'error');
+                addMessage('system', 'NeuroSync AI Server ist nicht erreichbar.', 'error');
+            } else if (health.sync_mode === 'perfect_audio_livelink_sync') {
+                setStatus('✅ Perfekte Audio+LiveLink Synchronisation aktiv', 'ready');
+            } else {
+                setStatus('✅ NeuroSync System verbunden', 'ready');
+            }
+        } else {
+            console.warn('⚠️ Health Check fehlgeschlagen:', response.status);
+            setStatus('System-Status unbekannt', 'warning');
+        }
+    } catch (error) {
+        console.error('❌ Health Check Fehler:', error);
+        setStatus('System-Verbindung prüfen...', 'warning');
+    }
+}
+
+// Auto-Health Check alle 30 Sekunden
+setInterval(checkSystemHealth, 30000);
+
+// Browser-Kompatibilität prüfen
+function checkBrowserSupport() {
+    const features = {
+        'Web Audio API': 'AudioContext' in window || 'webkitAudioContext' in window,
+        'Media Recorder': 'MediaRecorder' in window,
+        'getUserMedia': navigator.mediaDevices && navigator.mediaDevices.getUserMedia,
+        'Fetch API': 'fetch' in window,
+        'Promise': 'Promise' in window
+    };
+
+    console.log('🌐 Browser-Support:', features);
+
+    const unsupported = Object.entries(features)
+        .filter(([feature, supported]) => !supported)
+        .map(([feature]) => feature);
+
+    if (unsupported.length > 0) {
+        console.warn('⚠️ Nicht unterstützte Features:', unsupported);
+        addMessage('system', `Browser-Warnung: ${unsupported.join(', ')} nicht verfügbar.`, 'warning');
+    }
+}
+
+// Browser-Support beim Laden prüfen
+setTimeout(checkBrowserSupport, 1000);
+
+// Global Error Handler
+window.addEventListener('error', (event) => {
+    console.error('🔥 Global Error:', event.error);
+    setStatus('Unerwarteter Fehler aufgetreten', 'error');
+});
+
+// Unhandled Promise Rejections
+window.addEventListener('unhandledrejection', (event) => {
+    console.error('🔥 Unhandled Promise Rejection:', event.reason);
+    setStatus('Asynchroner Fehler aufgetreten', 'error');
+});
+
+console.log('🚀 NeuroSync Avatar Chat System vollständig initialisiert');
+console.log('🎭 Features: Perfekte Audio+LiveLink Sync, ElevenLabs v2, Deutsche Franzi');
+console.log('🔧 Debug-Modus: Console-Logs aktiviert');
