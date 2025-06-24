@@ -1,4 +1,4 @@
-﻿// NeuroSync Avatar Chat - Audio-Event Based Perfect Synchronization (Option 3)
+﻿// NeuroSync Avatar Chat - Audio-Event Based Perfect Synchronization + Auto-Start
 let isRecording = false;
 let mediaRecorder;
 let audioChunks = [];
@@ -201,7 +201,7 @@ async function sendMessage() {
     }
 }
 
-// Voice Recording Functions (unverändert)
+// Voice Recording Functions
 async function toggleRecording() {
     const micButton = document.getElementById('micButton');
 
@@ -299,11 +299,11 @@ function clearChat() {
             <strong>Avatar</strong>
             Hallo! Ich bin dein KI-Avatar mit Audio-Event basierter perfekter Synchronisation! 
             LiveLink startet erst wenn Audio wirklich spielt - bei jeder Internetgeschwindigkeit!
-            <small>Option 3 - Audio-Event basiert</small>
+            <small>Auto-Start aktiviert</small>
         </div>
     `;
-    setStatus('Chat gelöscht • Audio-Event Sync bereit', 'ready');
-    console.log('🧹 Chat gelöscht - Option 3 (Audio-Event) aktiv');
+    setStatus('Chat gelöscht • Audio-Event Sync + Auto-Start bereit', 'ready');
+    console.log('🧹 Chat gelöscht - Option 3 (Audio-Event) + Auto-Start aktiv');
 }
 
 function toggleStream() {
@@ -312,6 +312,11 @@ function toggleStream() {
         iframe.style.display = iframe.style.display === 'none' ? 'block' : 'none';
         const visible = iframe.style.display !== 'none';
         setStatus(visible ? 'Avatar-Stream sichtbar' : 'Avatar-Stream ausgeblendet', 'info');
+
+        // Auto-Start nach Toggle wieder aktivieren
+        if (visible) {
+            setTimeout(autoStartPixelStreaming, 1000);
+        }
     }
 }
 
@@ -322,8 +327,153 @@ function resetStream() {
         iframe.src = '';
         setTimeout(() => {
             iframe.src = originalSrc;
+            // Auto-Start nach Reset
+            setTimeout(autoStartPixelStreaming, 2000);
         }, 100);
         setStatus('Avatar-Stream zurückgesetzt', 'info');
+    }
+}
+
+// ========== AUTO-START PIXEL STREAMING ==========
+function autoStartPixelStreaming() {
+    console.log('🎮 Auto-Start Pixel Streaming initialisiert...');
+
+    let attempts = 0;
+    const maxAttempts = 10;
+
+    function tryAutoStart() {
+        attempts++;
+        console.log(`🎮 Auto-Start Versuch ${attempts}/${maxAttempts}`);
+
+        const iframe = document.getElementById('pixelStreamIframe');
+        if (!iframe) {
+            console.log('❌ Iframe nicht gefunden');
+            return;
+        }
+
+        try {
+            // Methode 1: Iframe Content Window Access
+            if (iframe.contentWindow && iframe.contentDocument) {
+                const iframeDoc = iframe.contentDocument;
+
+                // Suche nach "Click to Start" Elementen
+                const possibleStartElements = [
+                    iframeDoc.querySelector('button'),
+                    iframeDoc.querySelector('[onclick]'),
+                    iframeDoc.querySelector('.start-button'),
+                    iframeDoc.querySelector('#start'),
+                    iframeDoc.querySelector('canvas'),
+                    iframeDoc.querySelector('div[style*="cursor"]'),
+                    iframeDoc.querySelector('*[role="button"]'),
+                    iframeDoc.body
+                ];
+
+                for (let element of possibleStartElements) {
+                    if (element) {
+                        console.log('🎯 Gefundenes Element für Auto-Click:', element.tagName, element.className);
+
+                        // Verschiedene Click-Events probieren
+                        element.click();
+
+                        const events = ['mousedown', 'mouseup', 'click', 'pointerdown', 'pointerup'];
+                        events.forEach(eventType => {
+                            const event = new MouseEvent(eventType, {
+                                bubbles: true,
+                                cancelable: true,
+                                view: iframe.contentWindow,
+                                clientX: 100,
+                                clientY: 100
+                            });
+                            element.dispatchEvent(event);
+                        });
+
+                        // Touch Events für mobile Kompatibilität
+                        const touchEvent = new TouchEvent('touchstart', {
+                            bubbles: true,
+                            cancelable: true,
+                            view: iframe.contentWindow
+                        });
+                        element.dispatchEvent(touchEvent);
+
+                        console.log('🎮 Auto-Click Events gesendet');
+                        return true;
+                    }
+                }
+            }
+
+            // Methode 2: PostMessage an iframe
+            iframe.contentWindow.postMessage({
+                type: 'autostart',
+                action: 'click',
+                x: 100,
+                y: 100
+            }, '*');
+
+            // Methode 3: Direct iframe click (Fallback)
+            const iframeClickEvent = new MouseEvent('click', {
+                bubbles: true,
+                cancelable: true,
+                clientX: 100,
+                clientY: 100
+            });
+            iframe.dispatchEvent(iframeClickEvent);
+
+            // Methode 4: Focus + Enter/Space
+            iframe.focus();
+            setTimeout(() => {
+                const keyEvents = ['Enter', 'Space', ' '];
+                keyEvents.forEach(key => {
+                    const keyEvent = new KeyboardEvent('keydown', {
+                        key: key,
+                        bubbles: true,
+                        cancelable: true
+                    });
+                    iframe.dispatchEvent(keyEvent);
+                });
+            }, 100);
+
+            console.log('🎮 Alternative Auto-Start Methoden versucht');
+
+        } catch (error) {
+            console.log('⚠️ Auto-Start blockiert (CORS/Security):', error.message);
+        }
+
+        // Retry nach 2 Sekunden wenn noch Versuche übrig
+        if (attempts < maxAttempts) {
+            setTimeout(tryAutoStart, 2000);
+        } else {
+            console.log('🎮 Auto-Start Versuche beendet - User-Click erforderlich');
+            addMessage('system', '🎮 Klicken Sie auf den Avatar-Stream um ihn zu starten', 'info');
+        }
+    }
+
+    // Ersten Versuch nach 3 Sekunden starten
+    setTimeout(tryAutoStart, 3000);
+}
+
+// Event Listener für iframe load
+function setupIframeAutoStart() {
+    const iframe = document.getElementById('pixelStreamIframe');
+    if (iframe) {
+        iframe.onload = () => {
+            console.log('🎮 Iframe geladen - starte Auto-Start...');
+            setTimeout(autoStartPixelStreaming, 1000);
+        };
+
+        iframe.onerror = () => {
+            console.log('❌ Iframe Ladefehler');
+        };
+
+        // Fallback falls onload nicht feuert
+        setTimeout(autoStartPixelStreaming, 5000);
+
+        // Event Listener für postMessage (falls iframe kommuniziert)
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.type === 'pixelStreamingReady') {
+                console.log('🎮 Pixel Streaming bereit - starte Auto-Start');
+                autoStartPixelStreaming();
+            }
+        });
     }
 }
 
@@ -342,12 +492,15 @@ document.addEventListener('DOMContentLoaded', function () {
         textInput.focus();
     }
 
-    checkSystemHealth();
-    setStatus('Option 3 geladen • Audio-Event basierte Synchronisation bereit', 'ready');
+    // Auto-Start Pixel Streaming initialisieren
+    console.log('🎮 Auto-Start Pixel Streaming wird initialisiert...');
+    setupIframeAutoStart();
 
-    console.log('🎉 NeuroSync Avatar Chat - Option 3 (Audio-Event basiert) geladen!');
-    console.log('🎯 Konzept: LiveLink startet wenn Audio "playing" Event feuert');
-    console.log('🎊 Vorteil: Funktioniert bei jeder Internetgeschwindigkeit!');
+    checkSystemHealth();
+    setStatus('Option 3 + Auto-Start geladen • Audio-Event Sync + Auto-Stream bereit', 'ready');
+
+    console.log('🎉 NeuroSync Avatar Chat - Option 3 (Audio-Event) + Auto-Start geladen!');
+    console.log('🎯 Features: Audio-Event Sync + Automatischer Pixel Stream Start');
 });
 
 // System Health Check
@@ -361,7 +514,7 @@ async function checkSystemHealth() {
                 setStatus('⚠️ NeuroSync Server offline', 'error');
                 addMessage('system', 'NeuroSync AI Server ist nicht erreichbar.', 'error');
             } else {
-                setStatus('✅ Audio-Event basierte Synchronisation aktiv', 'ready');
+                setStatus('✅ Audio-Event Sync + Auto-Start aktiv', 'ready');
             }
         }
     } catch (error) {
@@ -372,6 +525,18 @@ async function checkSystemHealth() {
 
 setInterval(checkSystemHealth, 30000);
 
-console.log('🚀 NeuroSync Avatar Chat - Option 3: Audio-Event basierte perfekte Synchronisation');
-console.log('🎭 LiveLink wartet auf Audio "playing" Event für latenz-unabhängige Sync');
-console.log('🎊 Perfekt für alle Internetgeschwindigkeiten und Browser!');
+// Global Error Handler
+window.addEventListener('error', (event) => {
+    console.error('🔥 Global Error:', event.error);
+    setStatus('Unerwarteter Fehler aufgetreten', 'error');
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+    console.error('🔥 Unhandled Promise Rejection:', event.reason);
+    setStatus('Asynchroner Fehler aufgetreten', 'error');
+});
+
+console.log('🚀 NeuroSync Avatar Chat - Audio-Event Sync + Auto-Start Pixel Streaming');
+console.log('🎭 LiveLink: Wartet auf Audio "playing" Event für perfekte Synchronisation');
+console.log('🎮 Auto-Start: Versucht automatisch Pixel Streaming zu starten');
+console.log('🎊 Optimiert für alle Internetgeschwindigkeiten und Browser!');
