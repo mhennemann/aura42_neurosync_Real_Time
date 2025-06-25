@@ -140,32 +140,38 @@ input[type="range"] {
     }
 }
 
-/* Mobile Avatar - MASSIVE VERGRÖSSERUNG */
+/* Mobile Avatar - ZENTRIERT UND GROSS */
 @media (max-width: 1024px) {
     #pixelStreamIframeMobile {
-        transform: scale(3.5) !important; /* 3.5x GRÖßER */
-        transform-origin: center top !important; /* Von oben zentrieren */
-        min-width: 300% !important;
-        min-height: 300% !important;
-        margin-left: -100% !important; /* Stark zentrieren */
-        margin-top: -50% !important; /* Viel weiter nach oben */
+        width: 400% !important;
+        height: 400% !important;
+        transform: scale(1.0) !important; /* Kein zusätzlicher Scale */
+        transform-origin: center center !important; /* Zentraler Ursprung */
+        position: absolute !important;
+        top: 50% !important; /* Vertikal zentrieren */
+        left: 50% !important; /* Horizontal zentrieren */
+        margin-top: -200% !important; /* Hälfte der Höhe zurück */
+        margin-left: -200% !important; /* Hälfte der Breite zurück */
+        z-index: 0 !important;
     }
 
-    /* Portrait Mode - extrem groß */
+    /* Portrait Mode */
     @media (orientation: portrait) {
         #pixelStreamIframeMobile {
-            transform: scale(4.0) !important; /* 4x GRÖßER im Portrait */
-            margin-top: -80% !important;
-            margin-left: -150% !important;
+            width: 350% !important;
+            height: 350% !important;
+            margin-top: -175% !important;
+            margin-left: -175% !important;
         }
     }
 
     /* Landscape Mode */
     @media (orientation: landscape) {
         #pixelStreamIframeMobile {
-            transform: scale(3.0) !important; /* 3x im Landscape */
-            margin-top: -40% !important;
-            margin-left: -100% !important;
+            width: 500% !important;
+            height: 500% !important;
+            margin-top: -250% !important;
+            margin-left: -250% !important;
         }
     }
 }
