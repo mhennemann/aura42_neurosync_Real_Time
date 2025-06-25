@@ -139,3 +139,34 @@ input[type="range"] {
         display: none !important;
     }
 }
+
+/* MOBILE AVATAR - KOMPLETT FULLSCREEN PORTRAIT 2 */
+@media (max-width: 1024px) {
+    iframe {
+        position: fixed !important;
+        top: -20% !important;
+        left: -20% !important;
+        width: 140vw !important;
+        height: 140vh !important;
+        transform: scale(1.0) !important;
+        transform-origin: center center !important;
+        z-index: 0 !important;
+    }
+
+    /* Portrait Mode - Avatar füllt ganzen Bildschirm */
+    @media (orientation: portrait) {
+        iframe {
+            transform: scale(6.0) !important; /* MAXIMAL GROß im Portrait */
+            transform-origin: center 25% !important; /* Gesicht oben zentriert */
+        }
+    }
+
+    /* Landscape Mode */
+    @media (orientation: landscape) {
+        iframe {
+            transform: scale(4.5) !important;
+            transform-origin: center center !important;
+
+        }
+    }
+}
