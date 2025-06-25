@@ -85,7 +85,7 @@ def generate_speech_segment_tts(text, tts_pipeline, tts_lock, voice='bf_isabella
         return audio_bytes
 
     except Exception as e:
-        print(f"❌ Error g
+        print(f"❌ Error generating speech with ElevenLabs for text '{text}': {e}")
 
 def process_transcription(audio_base64, return_timestamps, transgenerator):
     if not audio_base64:
