@@ -140,32 +140,30 @@ input[type="range"] {
     }
 }
 
-/* Mobile Avatar Portrait Optimierung */
+/* Mobile Avatar - DOPPELT SO GROSS */
 @media (max-width: 1024px) {
     #pixelStreamIframeMobile {
-        transform: scale(1.1) !important; /* Weniger Zoom */
-        transform-origin: center top !important; /* Von oben zentrieren */
-        min-width: 100% !important;
-        min-height: 120% !important;
-        margin-left: 0% !important; /* Keine seitliche Verschiebung */
-        margin-top: -5% !important; /* Nur leicht nach oben */
+        transform: scale(2.0) !important; /* DOPPELTE GRÖSSE */
+        transform-origin: center center !important;
+        min-width: 200% !important;
+        min-height: 200% !important;
+        margin-left: -50% !important; /* Zentrieren */
+        margin-top: -25% !important; /* Leicht nach oben */
     }
 
-    /* Für Portrait-Modus (Handy hochkant) */
+    /* Portrait Mode - noch größer */
     @media (orientation: portrait) {
         #pixelStreamIframeMobile {
-            transform: scale(1.2) !important; /* Portrait: Etwas größer */
-            transform-origin: center top !important;
-            margin-top: -10% !important;
+            transform: scale(2.2) !important; /* Noch größer im Portrait */
+            margin-top: -30% !important;
         }
     }
 
-    /* Für Landscape-Modus (Handy quer) */
+    /* Landscape Mode */
     @media (orientation: landscape) {
         #pixelStreamIframeMobile {
-            transform: scale(1.4) !important; /* Landscape: Mehr Zoom */
-            transform-origin: center center !important;
-            margin-top: -15% !important;
+            transform: scale(2.5) !important; /* Maximal groß im Landscape */
+            margin-top: -40% !important;
         }
     }
 }
