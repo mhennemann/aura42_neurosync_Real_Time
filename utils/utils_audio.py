@@ -67,7 +67,7 @@ def generate_speech_segment_tts(text, tts_pipeline, tts_lock, voice='bf_isabella
         
         data = {
             'text': text,
-            'model_id': 'eleven_monolingual_v1',
+            'model_id': 'eleven_multilingual_v1',
             'voice_settings': {
                 'stability': 0.5,
                 'similarity_boost': 0.5
