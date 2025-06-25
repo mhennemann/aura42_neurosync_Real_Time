@@ -37,8 +37,7 @@ def trim_and_fade(audio, sample_rate, threshold=0.01, fade_duration=0.0, padding
 
 def generate_speech_segment_tts(text, tts_pipeline, tts_lock, voice='bf_isabella'):
     """
-    Generate a speech segment using direct ElevenLabs v2 API calls.
-    Bypasses the SDK which still uses v1 internally.
+    Generate a speech segment using ElevenLabs TTS.
     """
     try:
         if not text.strip():
@@ -55,44 +54,38 @@ def generate_speech_segment_tts(text, tts_pipeline, tts_lock, voice='bf_isabella
 
         elevenlabs_voice = voice_mapping.get(voice, voice_mapping['default'])
 
-        # Direkte v2 API Calls - umgehen das SDK komplett
-        import requests
-        
-        url = f"https://api.elevenlabs.io/v2/text-to-speech/{elevenlabs_voice}"
-        
-        headers = {
-            'xi-api-key': 'sk_9739f15bbe43d93268abcba00d20ab63973945a02a36723a',
-            'Content-Type': 'application/json'
-        }
-        
-        data = {
-            'text': text,
-            'model_id': 'eleven_multilingual_v1',
-            'voice_settings': {
-                'stability': 0.5,
-                'similarity_boost': 0.5
-            }
-        }
-        
-        print(f"🔄 Direct v2 API call for voice '{voice}' (ID: {elevenlabs_voice})")
-        print(f"📡 URL: {url}")
-        
-        response = requests.post(url, headers=headers, json=data, timeout=30)
-        
-        if response.status_code == 200:
-            audio_bytes = response.content
-            print(f"✅ ElevenLabs v2 API success: {len(audio_bytes)} bytes for: {text[:50]}...")
-            return audio_bytes
+        # Use ElevenLabs client from tts_pipeline
+        if tts_pipeline and hasattr(tts_pipeline, 'text_to_speech'):
+            # Method 1: Client text_to_speech method
+            audio_generator = tts_pipeline.text_to_speech.convert(
+                voice_id=elevenlabs_voice,
+                text=text,
+                model_id="eleven_multilingual_v1"  # ← DAS WAR DIE WICHTIGE ÄNDERUNG!
+            )
         else:
-            print(f"❌ ElevenLabs v2 API error: {response.status_code}")
-            print(f"Response: {response.text}")
-            return None
+            # Method 2: Direct API call
+            from elevenlabs.client import ElevenLabs
+            client = ElevenLabs(api_key="sk_9739f15bbe43d93268abcba00d20ab63973945a02a36723a")
+
+            audio_generator = client.text_to_speech.convert(
+                voice_id=elevenlabs_voice,
+                text=text,
+                model_id="eleven_multilingual_v1"  # ← UND HIER AUCH!
+            )
+
+        # Collect audio data from generator
+        audio_chunks = []
+        for chunk in audio_generator:
+            audio_chunks.append(chunk)
+
+        # Combine all chunks
+        audio_bytes = b''.join(audio_chunks)
+
+        print(f"✅ ElevenLabs generated {len(audio_bytes)} bytes for: {text[:50]}...")
+        return audio_bytes
 
     except Exception as e:
-        print(f"❌ Error with direct v2 API for text '{text}': {e}")
-        import traceback
-        traceback.print_exc()
-        return None
+        print(f"❌ Error g
 
 def process_transcription(audio_base64, return_timestamps, transgenerator):
     if not audio_base64:
