@@ -1,0 +1,353 @@
+﻿<!DOCTYPE html>
+<html lang="de" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuroSync Avatar Chat</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Custom Tailwind Config für Ihre Farben -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'neurosync-pink': '#F43098',
+                        'neurosync-pink-light': '#FF6BB3',
+                        // Schwarz-Weiß Palette
+                        'bg-primary': '#000000',
+                        'bg-secondary': '#1a1a1a',
+                        'bg-tertiary': '#2c2c2c',
+                        'bg-quaternary': '#333333',
+                        'text-primary': '#FFFFFF',
+                        'text-secondary': '#888888',
+                        'text-muted': '#666666',
+                        'border-custom': '#444444'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Nur minimale Custom Styles -->
+    <style>
+        .pulse-pink {
+            animation: pulse-pink 1.5s infinite;
+        }
+
+        @keyframes pulse-pink {
+            0%, 100% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(244, 48, 152, 0.7);
+            }
+
+            50% {
+                transform: scale(1.05);
+                box-shadow: 0 0 0 10px rgba(244, 48, 152, 0);
+            }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Custom Slider Styling */
+        input[type="range"]::-webkit-slider-track {
+            background: #1a1a1a;
+            height: 6px;
+            border-radius: 3px;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            background: #FFFFFF;
+            height: 18px;
+            width: 18px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+            input[type="range"]::-webkit-slider-thumb:hover {
+                transform: scale(1.2);
+                background: #888888;
+            }
+    </style>
+</head>
+<body class="h-full bg-bg-primary text-text-primary font-sans overflow-hidden">
+
+    <!-- Desktop Layout -->
+    <div class="hidden lg:flex h-full">
+        <!-- Chat Panel (Links) - 450px wie im Original -->
+        <div class="w-[450px] bg-bg-secondary flex flex-col border-r border-border-custom">
+            <!-- Header mit Logo -->
+            <div class="relative text-center mb-8 border-b-2 border-text-secondary pb-5 p-8">
+                <div class="absolute top-0 left-0 w-10 h-10 rounded-lg bg-bg-tertiary flex items-center justify-center text-xl font-bold text-text-primary border-2 border-border-custom">
+                    NS
+                </div>
+                <div class="ml-12">
+                    <h1 class="text-2xl font-bold text-text-primary mb-2">NeuroSync Avatar Chat</h1>
+                    <p class="text-sm text-text-secondary">Minimalistisches Schwarz-Weiß Design mit KI-Avatar</p>
+                </div>
+            </div>
+
+            <!-- Chat Messages -->
+            <div id="chatMessages" class="flex-1 overflow-y-auto border border-border-custom p-4 mx-8 mb-6 rounded-lg bg-bg-tertiary max-h-96 scrollbar-thin scrollbar-thumb-text-secondary scrollbar-track-bg-secondary">
+                <div class="mb-4 p-3 rounded-lg bg-bg-secondary mr-5 border border-border-custom fade-in">
+                    <strong class="block mb-1 text-xs opacity-80 text-text-primary">Franzi (KI)</strong>
+                    <div>Hallo! Minimalistisches Design mit Schwarz-Weiß Palette. Pink nur für wichtige Action-Buttons!</div>
+                    <small class="text-xs opacity-60 block mt-1 text-text-muted">Bereit zum Chatten</small>
+                </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="px-8 pb-8">
+                <!-- Text Input + Senden Button -->
+                <div class="flex gap-3 mb-4">
+                    <input type="text" id="textInput"
+                           placeholder="Schreibe deine Nachricht hier..."
+                           class="flex-1 px-4 py-4 bg-bg-tertiary border-2 border-border-custom rounded-lg text-text-primary placeholder-text-muted focus:outline-none focus:border-text-secondary focus:shadow-lg transition-all">
+                    <button onclick="sendMessage()"
+                            class="px-6 py-4 bg-neurosync-pink text-text-primary font-bold rounded-lg hover:bg-neurosync-pink-light transform hover:scale-105 hover:-translate-y-0.5 transition-all duration-300 border border-neurosync-pink hover:shadow-lg hover:shadow-neurosync-pink/30">
+                        Senden
+                    </button>
+                </div>
+
+                <!-- Control Buttons -->
+                <div class="flex gap-3 mb-5">
+                    <button id="micButton" onclick="toggleRecording()"
+                            class="flex-1 px-4 py-4 bg-neurosync-pink text-text-primary font-bold rounded-lg hover:bg-neurosync-pink-light transform hover:scale-105 hover:-translate-y-0.5 transition-all duration-300 border border-neurosync-pink hover:shadow-lg hover:shadow-neurosync-pink/30 min-w-[60px]">
+                        🎤 Aufnehmen
+                    </button>
+                    <button onclick="clearChat()"
+                            class="flex-1 px-4 py-4 bg-bg-tertiary text-text-primary font-bold rounded-lg hover:bg-bg-quaternary border border-border-custom hover:border-text-secondary transition-all duration-300">
+                        Chat löschen
+                    </button>
+                </div>
+
+                <!-- Audio Sync Controls -->
+                <div class="bg-bg-tertiary p-3 rounded-lg text-center border border-border-custom mb-5">
+                    <label for="audioDelaySlider" class="text-text-primary text-sm font-semibold mr-3">🎵 Audio-Sync:</label>
+                    <input type="range" id="audioDelaySlider" min="0" max="200" value="40" step="10"
+                           class="w-32 mx-3 h-1.5 bg-bg-secondary rounded-lg appearance-none cursor-pointer">
+                    <span id="delayValue" class="text-text-primary font-bold min-w-[50px] inline-block bg-bg-secondary px-2 py-1 rounded border border-border-custom text-sm">40ms</span>
+                    <button onclick="testSync()" id="testSyncBtn"
+                            class="bg-bg-tertiary text-text-primary border border-border-custom px-3 py-1 rounded ml-3 text-xs hover:bg-bg-quaternary hover:border-text-secondary transition-all duration-300">
+                        🔄 Test
+                    </button>
+                </div>
+
+                <!-- Status -->
+                <div id="status" class="text-xs text-text-secondary text-center p-3 bg-bg-tertiary rounded border border-border-custom">
+                    Bereit • Minimalistisches Design aktiv
+                </div>
+            </div>
+        </div>
+
+        <!-- Avatar Panel (Rechts) - VOLLBILD -->
+        <div class="flex-1 bg-bg-primary relative flex flex-col h-screen overflow-hidden">
+            <!-- Avatar Header - Minimiert -->
+            <div class="absolute top-2.5 left-2.5 z-10 bg-black/80 px-3 py-2 rounded border border-border-custom backdrop-blur-sm">
+                <h2 class="text-sm text-text-primary font-semibold">🤖 Live Avatar</h2>
+                <p class="text-xs text-text-secondary">NeuroSync Pixel Streaming</p>
+            </div>
+
+            <!-- Avatar Stream - VOLLBILD -->
+            <div class="flex-1 relative h-full w-full">
+                <iframe id="pixelStreamIframe"
+                        src="https://avatar.aura42.de/"
+                        class="w-full h-full border-0 bg-bg-primary absolute top-0 left-0">
+                </iframe>
+
+                <!-- Loading State -->
+                <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-text-secondary text-base z-10 bg-black/80 px-5 py-2.5 rounded border border-border-custom backdrop-blur-sm hidden" id="avatarLoading">
+                    🔄 Avatar wird geladen...
+                </div>
+            </div>
+
+            <!-- Avatar Controls - Grau (nicht Pink) -->
+            <div class="absolute bottom-4 right-4 flex gap-2 z-10">
+                <button onclick="toggleStream()"
+                        class="px-3 py-2 text-xs bg-bg-tertiary text-text-primary border border-border-custom rounded backdrop-blur-sm hover:bg-bg-quaternary hover:border-text-secondary transition-all duration-300">
+                    📹 Stream
+                </button>
+                <button onclick="resetStream()"
+                        class="px-3 py-2 text-xs bg-bg-tertiary text-text-primary border border-border-custom rounded backdrop-blur-sm hover:bg-bg-quaternary hover:border-text-secondary transition-all duration-300">
+                    🔄 Reset
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Layout -->
+    <div class="lg:hidden h-full flex flex-col relative">
+        <!-- Avatar Background (TRUE FULLSCREEN) -->
+        <div class="absolute inset-0 z-0 overflow-hidden">
+            <iframe id="pixelStreamIframeMobile"
+                    src="https://avatar.aura42.de/"
+                    class="border-0 bg-bg-primary"
+                    style="">
+            </iframe>
+        </div>
+
+        <!-- Mobile Header -->
+        <div class="relative z-10 bg-bg-secondary/80 backdrop-blur-sm p-4 border-b border-border-custom/50">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 bg-bg-tertiary rounded-lg flex items-center justify-center font-bold text-sm border border-border-custom">
+                        NS
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-bold text-text-primary">NeuroSync</h1>
+                    </div>
+                </div>
+
+                <!-- Mobile Menu Button -->
+                <button id="mobileMenuBtn" onclick="toggleMobilePanel()"
+                        class="p-2 bg-text-primary/20 backdrop-blur-sm rounded-lg hover:bg-text-primary/30 transition-all duration-200">
+                    <svg class="w-6 h-6 text-text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Chat Input (Overlay) -->
+        <div class="absolute bottom-0 left-0 right-0 z-20 bg-bg-secondary/90 backdrop-blur-md p-4 border-t border-border-custom/50">
+            <!-- Chat Messages (Compact) -->
+            <div id="chatMessagesMobile" class="mb-4 max-h-32 overflow-y-auto space-y-2 hidden">
+                <div class="bg-bg-tertiary/90 p-3 rounded-lg border border-border-custom text-sm fade-in">
+                    <div class="font-semibold text-xs mb-1 text-text-primary">Avatar</div>
+                    <div>Bereit zum Chatten!</div>
+                </div>
+            </div>
+
+            <!-- Mobile Input Controls -->
+            <div class="space-y-3">
+                <!-- Text Input -->
+                <div class="flex space-x-2">
+                    <input type="text" id="textInputMobile"
+                           placeholder="Nachricht eingeben..."
+                           class="flex-1 px-4 py-3 bg-bg-tertiary/90 border border-border-custom rounded-lg text-text-primary placeholder-text-muted focus:outline-none focus:border-text-secondary backdrop-blur-sm">
+                    <button onclick="sendMessageMobile()"
+                            class="px-6 py-3 bg-neurosync-pink text-text-primary font-bold rounded-lg hover:bg-neurosync-pink-light transform hover:scale-105 transition-all duration-200 border border-neurosync-pink">
+                        📤
+                    </button>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex space-x-2">
+                    <button id="micButtonMobile" onclick="toggleRecordingMobile()"
+                            class="flex-1 px-4 py-3 bg-neurosync-pink text-text-primary font-bold rounded-lg hover:bg-neurosync-pink-light transition-all duration-200 border border-neurosync-pink">
+                        🎤 Aufnehmen
+                    </button>
+                    <button onclick="toggleMobileChat()"
+                            class="px-4 py-3 bg-bg-tertiary text-text-primary font-bold rounded-lg hover:bg-bg-quaternary border border-border-custom transition-all duration-200">
+                        💬
+                    </button>
+                </div>
+
+                <!-- Status Indicator -->
+                <div id="statusMobile" class="text-center text-xs text-text-secondary bg-bg-tertiary/50 py-2 rounded backdrop-blur-sm border border-border-custom">
+                    Bereit • Avatar Fullscreen
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Settings Panel (Sliding) -->
+        <div id="mobilePanel" class="fixed inset-y-0 right-0 w-80 bg-bg-secondary/95 backdrop-blur-sm transform translate-x-full transition-transform duration-300 ease-in-out z-30 border-l border-border-custom">
+            <div class="p-6 h-full overflow-y-auto">
+                <!-- Panel Header -->
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-lg font-bold text-text-primary">Einstellungen</h3>
+                    <button onclick="toggleMobilePanel()"
+                            class="p-2 bg-bg-tertiary rounded-lg hover:bg-bg-quaternary transition-all duration-200 border border-border-custom">
+                        <svg class="w-5 h-5 text-text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Audio Sync Controls -->
+                <div class="mb-6">
+                    <label class="block text-sm font-semibold text-text-primary mb-3">🎵 Audio-Sync Delay</label>
+                    <div class="space-y-3">
+                        <input type="range" id="audioDelaySliderMobile" min="0" max="200" value="40" step="10"
+                               class="w-full h-2 bg-bg-tertiary rounded-lg appearance-none cursor-pointer">
+                        <div class="flex items-center justify-between">
+                            <span id="delayValueMobile" class="bg-bg-tertiary text-text-primary px-3 py-1 rounded font-bold border border-border-custom">40ms</span>
+                            <button onclick="testSyncMobile()"
+                                    class="px-4 py-2 bg-bg-tertiary text-text-primary text-sm font-bold rounded-lg border border-border-custom hover:bg-bg-quaternary transition-all">
+                                🔄 Test
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chat Controls -->
+                <div class="mb-6">
+                    <label class="block text-sm font-semibold text-text-primary mb-3">💬 Chat Steuerung</label>
+                    <div class="space-y-2">
+                        <button onclick="clearChatMobile()"
+                                class="w-full px-4 py-3 bg-bg-tertiary text-text-primary font-bold rounded-lg border border-border-custom hover:bg-bg-quaternary transition-all">
+                            🗑️ Chat löschen
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Avatar Controls -->
+                <div class="mb-6">
+                    <label class="block text-sm font-semibold text-text-primary mb-3">🎭 Avatar Steuerung</label>
+                    <div class="space-y-2">
+                        <button onclick="resetStreamMobile()"
+                                class="w-full px-4 py-3 bg-bg-tertiary text-text-primary font-bold rounded-lg border border-border-custom hover:bg-bg-quaternary transition-all">
+                            🔄 Avatar Reset
+                        </button>
+                        <button onclick="toggleStreamMobile()"
+                                class="w-full px-4 py-3 bg-bg-tertiary text-text-primary font-bold rounded-lg border border-border-custom hover:bg-bg-quaternary transition-all">
+                            📹 Stream Toggle
+                        </button>
+                    </div>
+                </div>
+
+                <!-- System Info -->
+                <div class="bg-bg-tertiary p-4 rounded-lg border border-border-custom">
+                    <h4 class="text-sm font-semibold text-text-primary mb-2">📊 System Status</h4>
+                    <div class="text-xs text-text-secondary space-y-1">
+                        <div>🤖 NeuroSync AI: <span class="text-green-400">Online</span></div>
+                        <div>🔊 ElevenLabs TTS: <span class="text-green-400">Aktiv</span></div>
+                        <div>🎭 Avatar Stream: <span class="text-green-400">Verbunden</span></div>
+                        <div>🎵 Audio Delay: <span id="currentDelayInfo" class="text-neurosync-pink">40ms</span></div>
+                        <div>🎨 Design: <span class="text-text-primary">Minimalistisch</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Panel Overlay -->
+        <div id="mobilePanelOverlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-20 opacity-0 pointer-events-none transition-opacity duration-300"></div>
+    </div>
+
+    <!-- JavaScript bleibt hier -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+
+    <!-- Mobile JavaScript bleibt auch hier -->
+    <script>
+        // ... Ihr JavaScript Code ...
+    </script>
+</body>
+</html>
