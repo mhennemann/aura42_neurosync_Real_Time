@@ -195,16 +195,17 @@
 
     <!-- Mobile Layout -->
     <div class="lg:hidden h-full flex flex-col relative">
-        <!-- Avatar Background (Full Screen) -->
-        <div class="absolute inset-0 z-0">
+        <!-- Avatar Background (TRUE FULLSCREEN) -->
+        <div class="absolute inset-0 z-0 overflow-hidden">
             <iframe id="pixelStreamIframeMobile"
                     src="https://avatar.aura42.de/"
-                    class="w-full h-full border-0 bg-bg-primary">
+                    class="w-full h-full border-0 bg-bg-primary scale-150 origin-center"
+                    style="min-width: 120%; min-height: 120%; margin-left: -10%; margin-top: -10%;">
             </iframe>
         </div>
 
         <!-- Mobile Header -->
-        <div class="relative z-10 bg-bg-secondary/90 backdrop-blur-sm p-4 border-b border-border-custom/50">
+        <div class="relative z-10 bg-bg-secondary/80 backdrop-blur-sm p-4 border-b border-border-custom/50">
             <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-3">
                     <div class="w-8 h-8 bg-bg-tertiary rounded-lg flex items-center justify-center font-bold text-sm border border-border-custom">
@@ -226,7 +227,7 @@
         </div>
 
         <!-- Mobile Chat Input (Overlay) -->
-        <div class="absolute bottom-0 left-0 right-0 z-20 bg-bg-secondary/95 backdrop-blur-sm p-4 border-t border-border-custom/50">
+        <div class="absolute bottom-0 left-0 right-0 z-20 bg-bg-secondary/90 backdrop-blur-md p-4 border-t border-border-custom/50">
             <!-- Chat Messages (Compact) -->
             <div id="chatMessagesMobile" class="mb-4 max-h-32 overflow-y-auto space-y-2 hidden">
                 <div class="bg-bg-tertiary/90 p-3 rounded-lg border border-border-custom text-sm fade-in">
@@ -262,7 +263,7 @@
 
                 <!-- Status Indicator -->
                 <div id="statusMobile" class="text-center text-xs text-text-secondary bg-bg-tertiary/50 py-2 rounded backdrop-blur-sm border border-border-custom">
-                    Bereit • Minimalistisches Design
+                    Bereit • Avatar Fullscreen
                 </div>
             </div>
         </div>
@@ -341,104 +342,113 @@
         <div id="mobilePanelOverlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-20 opacity-0 pointer-events-none transition-opacity duration-300"></div>
     </div>
 
-    <!-- JavaScript -->
+    <!-- JavaScript bleibt hier -->
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 
-    <!-- Mobile-specific JavaScript -->
+    <!-- Mobile JavaScript bleibt auch hier -->
     <script>
-        // Mobile Panel Toggle
-        function toggleMobilePanel() {
-            const panel = document.getElementById('mobilePanel');
-            const overlay = document.getElementById('mobilePanelOverlay');
-            const isOpen = !panel.classList.contains('translate-x-full');
-
-            if (isOpen) {
-                panel.classList.add('translate-x-full');
-                overlay.classList.add('opacity-0', 'pointer-events-none');
-            } else {
-                panel.classList.remove('translate-x-full');
-                overlay.classList.remove('opacity-0', 'pointer-events-none');
-            }
-        }
-
-        // Mobile Chat Toggle
-        function toggleMobileChat() {
-            const chatMessages = document.getElementById('chatMessagesMobile');
-            chatMessages.classList.toggle('hidden');
-        }
-
-        // Mobile Functions (delegates to main functions)
-        function sendMessageMobile() {
-            const input = document.getElementById('textInputMobile');
-            const desktopInput = document.getElementById('textInput');
-            desktopInput.value = input.value;
-            sendMessage();
-            input.value = '';
-        }
-
-        function toggleRecordingMobile() {
-            toggleRecording();
-            const micBtn = document.getElementById('micButtonMobile');
-            const isRecording = micBtn.classList.contains('pulse-pink');
-
-            if (isRecording) {
-                micBtn.classList.remove('pulse-pink');
-            } else {
-                micBtn.classList.add('pulse-pink');
-            }
-        }
-
-        function clearChatMobile() {
-            clearChat();
-        }
-
-        function resetStreamMobile() {
-            resetStream();
-        }
-
-        function toggleStreamMobile() {
-            toggleStream();
-        }
-
-        function testSyncMobile() {
-            testSync();
-        }
-
-        // Sync mobile and desktop delay sliders
-        document.getElementById('audioDelaySliderMobile').addEventListener('input', function () {
-            const value = this.value;
-            document.getElementById('audioDelaySlider').value = value;
-            document.getElementById('delayValue').textContent = value + 'ms';
-            document.getElementById('delayValueMobile').textContent = value + 'ms';
-            document.getElementById('currentDelayInfo').textContent = value + 'ms';
-
-            // Update actual delay value
-            if (typeof currentAudioDelayMs !== 'undefined') {
-                currentAudioDelayMs = parseInt(value);
-            }
-        });
-
-        document.getElementById('audioDelaySlider').addEventListener('input', function () {
-            const value = this.value;
-            document.getElementById('audioDelaySliderMobile').value = value;
-            document.getElementById('delayValueMobile').textContent = value + 'ms';
-            document.getElementById('currentDelayInfo').textContent = value + 'ms';
-        });
-
-        // Close mobile panel when clicking overlay
-        document.getElementById('mobilePanelOverlay').addEventListener('click', toggleMobilePanel);
-
-        // Handle orientation change
-        window.addEventListener('orientationchange', function () {
-            setTimeout(function () {
-                console.log('Orientation changed');
-            }, 100);
-        });
-
-        // Initialize mobile layout
-        document.addEventListener('DOMContentLoaded', function () {
-            console.log('Minimalistic mobile layout initialized');
-        });
+        // ... Ihr JavaScript Code ...
     </script>
+</body>
+</html>
+<!-- JavaScript -->
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+
+<!-- Mobile-specific JavaScript -->
+<script>
+    // Mobile Panel Toggle
+    function toggleMobilePanel() {
+        const panel = document.getElementById('mobilePanel');
+        const overlay = document.getElementById('mobilePanelOverlay');
+        const isOpen = !panel.classList.contains('translate-x-full');
+
+        if (isOpen) {
+            panel.classList.add('translate-x-full');
+            overlay.classList.add('opacity-0', 'pointer-events-none');
+        } else {
+            panel.classList.remove('translate-x-full');
+            overlay.classList.remove('opacity-0', 'pointer-events-none');
+        }
+    }
+
+    // Mobile Chat Toggle
+    function toggleMobileChat() {
+        const chatMessages = document.getElementById('chatMessagesMobile');
+        chatMessages.classList.toggle('hidden');
+    }
+
+    // Mobile Functions (delegates to main functions)
+    function sendMessageMobile() {
+        const input = document.getElementById('textInputMobile');
+        const desktopInput = document.getElementById('textInput');
+        desktopInput.value = input.value;
+        sendMessage();
+        input.value = '';
+    }
+
+    function toggleRecordingMobile() {
+        toggleRecording();
+        const micBtn = document.getElementById('micButtonMobile');
+        const isRecording = micBtn.classList.contains('pulse-pink');
+
+        if (isRecording) {
+            micBtn.classList.remove('pulse-pink');
+        } else {
+            micBtn.classList.add('pulse-pink');
+        }
+    }
+
+    function clearChatMobile() {
+        clearChat();
+    }
+
+    function resetStreamMobile() {
+        resetStream();
+    }
+
+    function toggleStreamMobile() {
+        toggleStream();
+    }
+
+    function testSyncMobile() {
+        testSync();
+    }
+
+    // Sync mobile and desktop delay sliders
+    document.getElementById('audioDelaySliderMobile').addEventListener('input', function () {
+        const value = this.value;
+        document.getElementById('audioDelaySlider').value = value;
+        document.getElementById('delayValue').textContent = value + 'ms';
+        document.getElementById('delayValueMobile').textContent = value + 'ms';
+        document.getElementById('currentDelayInfo').textContent = value + 'ms';
+
+        // Update actual delay value
+        if (typeof currentAudioDelayMs !== 'undefined') {
+            currentAudioDelayMs = parseInt(value);
+        }
+    });
+
+    document.getElementById('audioDelaySlider').addEventListener('input', function () {
+        const value = this.value;
+        document.getElementById('audioDelaySliderMobile').value = value;
+        document.getElementById('delayValueMobile').textContent = value + 'ms';
+        document.getElementById('currentDelayInfo').textContent = value + 'ms';
+    });
+
+    // Close mobile panel when clicking overlay
+    document.getElementById('mobilePanelOverlay').addEventListener('click', toggleMobilePanel);
+
+    // Handle orientation change
+    window.addEventListener('orientationchange', function () {
+        setTimeout(function () {
+            console.log('Orientation changed');
+        }, 100);
+    });
+
+    // Initialize mobile layout
+    document.addEventListener('DOMContentLoaded', function () {
+        console.log('Minimalistic mobile layout initialized');
+    });
+</script>
 </body>
 </html>
