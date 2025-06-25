@@ -140,38 +140,67 @@ input[type="range"] {
     }
 }
 
-/* Mobile Avatar - ZENTRIERT UND GROSS */
+/* Mobile Avatar - FUNKTIONIERT FÜR ALLE IFRAMES */
 @media (max-width: 1024px) {
+    /* Für pixelStreamIframeMobile */
     #pixelStreamIframeMobile {
-        width: 400% !important;
-        height: 400% !important;
-        transform: scale(1.0) !important; /* Kein zusätzlicher Scale */
-        transform-origin: center center !important; /* Zentraler Ursprung */
-        position: absolute !important;
-        top: 50% !important; /* Vertikal zentrieren */
-        left: 50% !important; /* Horizontal zentrieren */
-        margin-top: -200% !important; /* Hälfte der Höhe zurück */
-        margin-left: -200% !important; /* Hälfte der Breite zurück */
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        transform: scale(3.5) !important;
+        transform-origin: center top !important;
         z-index: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
     }
 
-    /* Portrait Mode */
-    @media (orientation: portrait) {
-        #pixelStreamIframeMobile {
-            width: 350% !important;
-            height: 350% !important;
-            margin-top: -175% !important;
-            margin-left: -175% !important;
-        }
+    /* Für pixelStreamIframe (falls Desktop iframe verwendet wird) */
+    #pixelStreamIframe {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        transform: scale(3.5) !important;
+        transform-origin: center top !important;
+        z-index: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
     }
 
-    /* Landscape Mode */
-    @media (orientation: landscape) {
-        #pixelStreamIframeMobile {
-            width: 500% !important;
-            height: 500% !important;
-            margin-top: -250% !important;
-            margin-left: -250% !important;
-        }
+    /* Alle iframes auf Mobile groß machen */
+    iframe[src*="avatar.aura42.de"] {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        transform: scale(3.5) !important;
+        transform-origin: center top !important;
+        z-index: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+}
+
+/* Portrait Orientation - noch größer */
+@media (max-width: 1024px) and (orientation: portrait) {
+    #pixelStreamIframeMobile,
+    #pixelStreamIframe,
+    iframe[src*="avatar.aura42.de"] {
+        transform: scale(4.0) !important;
+        transform-origin: center top !important;
+    }
+}
+
+/* Landscape Orientation */
+@media (max-width: 1024px) and (orientation: landscape) {
+    #pixelStreamIframeMobile,
+    #pixelStreamIframe,
+    iframe[src*="avatar.aura42.de"] {
+        transform: scale(3.0) !important;
+        transform-origin: center center !important;
     }
 }
