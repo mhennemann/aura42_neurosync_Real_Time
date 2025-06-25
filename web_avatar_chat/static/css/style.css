@@ -140,7 +140,7 @@ input[type="range"] {
     }
 }
 
-/* MOBILE AVATAR - KOMPLETT FULLSCREEN PORTRAIT */
+/* MOBILE AVATAR - KOMPLETT FULLSCREEN PORTRAIT 2 */
 @media (max-width: 1024px) {
     iframe {
         position: fixed !important;
