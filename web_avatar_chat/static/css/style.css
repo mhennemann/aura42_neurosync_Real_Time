@@ -140,30 +140,32 @@ input[type="range"] {
     }
 }
 
-/* Mobile Avatar - DOPPELT SO GROSS */
+/* Mobile Avatar - MASSIVE VERGRÖSSERUNG */
 @media (max-width: 1024px) {
     #pixelStreamIframeMobile {
-        transform: scale(2.0) !important; /* DOPPELTE GRÖSSE */
-        transform-origin: center center !important;
-        min-width: 200% !important;
-        min-height: 200% !important;
-        margin-left: -50% !important; /* Zentrieren */
-        margin-top: -25% !important; /* Leicht nach oben */
+        transform: scale(3.5) !important; /* 3.5x GRÖßER */
+        transform-origin: center top !important; /* Von oben zentrieren */
+        min-width: 300% !important;
+        min-height: 300% !important;
+        margin-left: -100% !important; /* Stark zentrieren */
+        margin-top: -50% !important; /* Viel weiter nach oben */
     }
 
-    /* Portrait Mode - noch größer */
+    /* Portrait Mode - extrem groß */
     @media (orientation: portrait) {
         #pixelStreamIframeMobile {
-            transform: scale(2.2) !important; /* Noch größer im Portrait */
-            margin-top: -30% !important;
+            transform: scale(4.0) !important; /* 4x GRÖßER im Portrait */
+            margin-top: -80% !important;
+            margin-left: -150% !important;
         }
     }
 
     /* Landscape Mode */
     @media (orientation: landscape) {
         #pixelStreamIframeMobile {
-            transform: scale(2.5) !important; /* Maximal groß im Landscape */
+            transform: scale(3.0) !important; /* 3x im Landscape */
             margin-top: -40% !important;
+            margin-left: -100% !important;
         }
     }
 }
