@@ -1,205 +1,24 @@
-﻿/* NeuroSync Avatar Chat - Minimalistisches Schwarz-Weiss Layout mit Pink Buttons */
+﻿/* NeuroSync Minimalistic Design - Nur Custom Animations für Tailwind */
 
-:root {
-    /* Minimale Farbpalette */
-    --primary-pink: #F43098; /* Nur für Senden/Aufnahme Buttons */
-    --accent-pink: #FF6BB3; /* Hover für Pink Buttons */
-    /* Schwarz-Weiss Palette */
-    --bg-primary: #000000; /* Schwarz */
-    --bg-secondary: #1a1a1a; /* Dunkelgrau */
-    --bg-tertiary: #2c2c2c; /* Mittelgrau */
-    --bg-quaternary: #333333; /* Helleres Grau */
-    /* Text Farben */
-    --text-primary: #FFFFFF; /* Weiß */
-    --text-secondary: #888888; /* Grau */
-    --text-muted: #666666; /* Dunkelgrau */
-    /* Neutrale Farben */
-    --border-color: #444444;
-    --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.3);
+/* Pulse Animation für Recording Button */
+.pulse-pink {
+    animation: pulse-pink 1.5s infinite;
 }
 
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: var(--bg-primary);
-    color: var(--text-primary);
-    display: flex;
-    height: 100vh;
-    overflow: hidden;
-}
-
-.chat-panel {
-    width: 450px;
-    background: var(--bg-secondary);
-    padding: 30px;
-    display: flex;
-    flex-direction: column;
-    border-right: 1px solid var(--border-color);
-}
-
-/* Avatar Panel - VOLLBILD */
-.avatar-panel {
-    flex: 1;
-    background: var(--bg-primary);
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    padding: 0;
-    height: 100vh;
-    overflow: hidden;
-}
-
-/* Avatar Header - Minimiert */
-.avatar-header {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    z-index: 10;
-    background: rgba(0, 0, 0, 0.8);
-    padding: 8px 12px;
-    border-radius: 5px;
-    margin: 0;
-    border: 1px solid var(--border-color);
-    backdrop-filter: blur(5px);
-}
-
-    .avatar-header h2 {
-        font-size: 14px;
-        margin: 0;
-        color: var(--text-primary);
+@keyframes pulse-pink {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(244, 48, 152, 0.7);
     }
 
-    .avatar-header p {
-        font-size: 10px;
-        color: var(--text-secondary);
-        margin: 0;
+    50% {
+        transform: scale(1.05);
+        box-shadow: 0 0 0 10px rgba(244, 48, 152, 0);
     }
-
-/* Pixel Stream Container */
-.pixel-stream-container {
-    flex: 1;
-    background: var(--bg-primary);
-    border-radius: 0;
-    overflow: hidden;
-    border: none;
-    margin: 0;
-    position: relative;
-    height: 100vh;
-    width: 100%;
 }
 
-    .pixel-stream-container iframe {
-        width: 100%;
-        height: 100%;
-        border: none;
-        border-radius: 0;
-        position: absolute;
-        top: 0;
-        left: 0;
-    }
-
-/* Avatar Controls - Grau */
-.avatar-controls {
-    position: absolute;
-    bottom: 15px;
-    right: 15px;
-    z-index: 10;
-    display: flex;
-    gap: 8px;
-}
-
-    .avatar-controls button {
-        padding: 8px 12px;
-        font-size: 11px;
-        background: var(--bg-tertiary);
-        color: var(--text-primary);
-        border: 1px solid var(--border-color);
-        border-radius: 4px;
-        backdrop-filter: blur(5px);
-        transition: all 0.3s ease;
-        cursor: pointer;
-    }
-
-        .avatar-controls button:hover {
-            background: var(--bg-quaternary);
-            border-color: var(--text-secondary);
-        }
-
-/* Loading State */
-.pixel-stream-container.loading::before {
-    content: "🔄 Avatar wird geladen...";
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    color: var(--text-secondary);
-    font-size: 16px;
-    z-index: 10;
-    background: rgba(0, 0, 0, 0.8);
-    padding: 10px 20px;
-    border-radius: 5px;
-    border: 1px solid var(--border-color);
-}
-
-/* Header mit Logo */
-.header {
-    text-align: center;
-    margin-bottom: 30px;
-    border-bottom: 2px solid var(--text-secondary);
-    padding-bottom: 20px;
-    position: relative;
-}
-
-    .header .logo {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 40px;
-        height: 40px;
-        border-radius: 8px;
-        background: var(--bg-tertiary);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 20px;
-        font-weight: bold;
-        color: var(--text-primary);
-        border: 2px solid var(--border-color);
-    }
-
-    .header h1 {
-        font-size: 24px;
-        margin-bottom: 8px;
-        color: var(--text-primary);
-        margin-left: 50px;
-    }
-
-    .header p {
-        font-size: 14px;
-        color: var(--text-secondary);
-        margin-left: 50px;
-    }
-
-.chat-messages {
-    flex: 1;
-    overflow-y: auto;
-    border: 1px solid var(--border-color);
-    padding: 15px;
-    margin-bottom: 25px;
-    border-radius: 10px;
-    background: var(--bg-tertiary);
-    max-height: 400px;
-}
-
-.message {
-    margin-bottom: 15px;
-    padding: 12px;
-    border-radius: 8px;
+/* Fade In Animation für Messages */
+.fade-in {
     animation: fadeIn 0.3s ease-in;
 }
 
@@ -215,349 +34,108 @@ body {
     }
 }
 
-.user-message {
-    background: var(--bg-quaternary);
-    text-align: right;
-    margin-left: 20px;
-    color: var(--text-primary);
-    border: 1px solid var(--border-color);
-}
-
-.avatar-message {
-    background: var(--bg-secondary);
-    margin-right: 20px;
-    border: 1px solid var(--border-color);
-}
-
-.chatgpt-response {
-    background: var(--bg-secondary);
-    margin-right: 20px;
-    border: 1px solid var(--border-color);
-}
-
-.system-message {
-    background: var(--bg-quaternary);
-    margin: 0 10px;
-    text-align: center;
-    color: var(--text-secondary);
-    border: 1px solid var(--border-color);
-}
-
-.message strong {
-    display: block;
-    margin-bottom: 5px;
-    font-size: 12px;
-    opacity: 0.8;
-    color: var(--text-primary);
-}
-
-.message small {
-    font-size: 10px;
-    opacity: 0.6;
-    display: block;
-    margin-top: 5px;
-    color: var(--text-muted);
-}
-
-.input-area {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 15px;
-}
-
-#textInput {
-    flex: 1;
-    padding: 15px;
-    border: 2px solid var(--border-color);
-    border-radius: 8px;
-    background: var(--bg-tertiary);
-    color: var(--text-primary);
-    font-size: 14px;
-    transition: border-color 0.3s ease;
-}
-
-    #textInput:focus {
-        outline: none;
-        border-color: var(--text-secondary);
-        box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
-    }
-
-    #textInput::placeholder {
-        color: var(--text-muted);
-    }
-
-/* Standard Buttons - Grau */
-button {
-    padding: 15px 25px;
-    border: none;
-    border-radius: 8px;
-    background: var(--bg-tertiary);
-    color: var(--text-primary);
-    cursor: pointer;
-    font-weight: bold;
-    transition: all 0.3s ease;
-    font-size: 14px;
-    border: 1px solid var(--border-color);
-}
-
-    button:hover {
-        background: var(--bg-quaternary);
-        border-color: var(--text-secondary);
-    }
-
-    button:active {
-        transform: translateY(0);
-    }
-
-    button:disabled {
-        background: var(--text-muted);
-        cursor: not-allowed;
-        transform: none;
-        box-shadow: none;
-    }
-
-/* SENDEN Button - PINK */
-.input-area button {
-    background: var(--primary-pink);
-    color: var(--text-primary);
-    border: 1px solid var(--primary-pink);
-}
-
-    .input-area button:hover {
-        background: var(--accent-pink);
-        border-color: var(--accent-pink);
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(244, 48, 152, 0.3);
-    }
-
-/* AUFNAHME Button - PINK */
-.mic-button {
-    background: var(--primary-pink);
-    color: var(--text-primary);
-    border: 1px solid var(--primary-pink);
-    min-width: 60px;
-}
-
-    .mic-button:hover {
-        background: var(--accent-pink);
-        border-color: var(--accent-pink);
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(244, 48, 152, 0.3);
-    }
-
-    .mic-button.recording {
-        background: #ff3333;
-        border-color: #ff3333;
-        animation: pulse 1s infinite;
-    }
-
-@keyframes pulse {
-    0% {
-        opacity: 1;
-        box-shadow: 0 0 10px rgba(255, 51, 51, 0.5);
-    }
-
-    50% {
-        opacity: 0.8;
-        box-shadow: 0 0 20px rgba(255, 51, 51, 0.8);
-    }
-
-    100% {
-        opacity: 1;
-        box-shadow: 0 0 10px rgba(255, 51, 51, 0.5);
-    }
-}
-
-.status {
-    font-size: 12px;
-    color: var(--text-secondary);
-    text-align: center;
-    padding: 10px;
-    background: var(--bg-tertiary);
-    border-radius: 5px;
-    border: 1px solid var(--border-color);
-}
-
-    .status.processing {
-        color: var(--text-primary);
-        background: var(--bg-quaternary);
-    }
-
-    .status.speaking {
-        color: var(--text-primary);
-        background: var(--bg-quaternary);
-    }
-
-    .status.error {
-        color: #ff6666;
-        background: var(--bg-quaternary);
-    }
-
-    .status.success {
-        color: #66ff66;
-        background: var(--bg-quaternary);
-    }
-
-    .status.ready {
-        color: var(--text-primary);
-        background: var(--bg-tertiary);
-    }
-
-.avatar-display {
-    text-align: center;
-    color: var(--text-secondary);
-}
-
-    .avatar-display h2 {
-        font-size: 48px;
-        margin-bottom: 20px;
-        color: var(--text-primary);
-    }
-
-    .avatar-display p {
-        font-size: 18px;
-        margin-bottom: 10px;
-    }
-
-    .avatar-display small {
-        font-size: 14px;
-        opacity: 0.6;
-    }
-
-.controls {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 20px;
-}
-
-    .controls button {
-        flex: 1;
-        background: var(--bg-tertiary);
-        border: 1px solid var(--border-color);
-    }
-
-        .controls button:hover {
-            background: var(--bg-quaternary);
-            border-color: var(--text-secondary);
-        }
-
-/* Scrollbar styling */
-.chat-messages::-webkit-scrollbar {
+/* Custom Scrollbar für Chat Messages */
+.scrollbar-thin::-webkit-scrollbar {
     width: 6px;
 }
 
-.chat-messages::-webkit-scrollbar-track {
-    background: var(--bg-secondary);
+.scrollbar-thumb-text-secondary::-webkit-scrollbar-thumb {
+    background: #888888;
     border-radius: 3px;
 }
 
-.chat-messages::-webkit-scrollbar-thumb {
-    background: var(--text-secondary);
-    border-radius: 3px;
-}
-
-    .chat-messages::-webkit-scrollbar-thumb:hover {
-        background: var(--text-primary);
+    .scrollbar-thumb-text-secondary::-webkit-scrollbar-thumb:hover {
+        background: #FFFFFF;
     }
 
-/* Sync Controls - Grau */
-.sync-controls {
-    background: var(--bg-tertiary);
-    padding: 10px;
-    margin: 10px 0;
-    border-radius: 8px;
-    text-align: center;
-    border: 1px solid var(--border-color);
+.scrollbar-track-bg-secondary::-webkit-scrollbar-track {
+    background: #1a1a1a;
+    border-radius: 3px;
 }
 
-    .sync-controls label {
-        color: var(--text-primary);
-        font-size: 14px;
-        margin-right: 10px;
-        font-weight: 600;
-    }
-
-#audioDelaySlider {
-    width: 150px;
-    margin: 0 10px;
-    height: 6px;
-    background: var(--bg-secondary);
-    border-radius: 3px;
-    outline: none;
+/* Range Slider Custom Styling */
+input[type="range"] {
     -webkit-appearance: none;
+    background: transparent;
 }
 
-    #audioDelaySlider::-webkit-slider-thumb {
+    input[type="range"]::-webkit-slider-track {
+        background: #1a1a1a;
+        height: 6px;
+        border-radius: 3px;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
         -webkit-appearance: none;
-        appearance: none;
-        width: 18px;
+        background: #FFFFFF;
         height: 18px;
-        background: var(--text-primary);
+        width: 18px;
         border-radius: 50%;
         cursor: pointer;
         transition: all 0.3s ease;
     }
 
-        #audioDelaySlider::-webkit-slider-thumb:hover {
+        input[type="range"]::-webkit-slider-thumb:hover {
             transform: scale(1.2);
-            background: var(--text-secondary);
+            background: #888888;
         }
 
-    #audioDelaySlider::-moz-range-thumb {
-        width: 18px;
-        height: 18px;
-        background: var(--text-primary);
-        border-radius: 50%;
-        cursor: pointer;
+    /* Firefox Range Slider */
+    input[type="range"]::-moz-range-track {
+        background: #1a1a1a;
+        height: 6px;
+        border-radius: 3px;
         border: none;
     }
 
-#delayValue {
-    color: var(--text-primary);
-    font-weight: bold;
-    min-width: 50px;
-    display: inline-block;
-    background: var(--bg-secondary);
-    padding: 4px 8px;
-    border-radius: 4px;
-    border: 1px solid var(--border-color);
+    input[type="range"]::-moz-range-thumb {
+        background: #FFFFFF;
+        height: 18px;
+        width: 18px;
+        border-radius: 50%;
+        cursor: pointer;
+        border: none;
+        transition: all 0.3s ease;
+    }
+
+/* Mobile Touch Optimization */
+@media (hover: none) and (pointer: coarse) {
+    .hover\:scale-105:hover {
+        transform: none !important;
+    }
+
+    .hover\:scale-105:active {
+        transform: scale(0.95) !important;
+    }
+
+    button {
+        min-height: 44px; /* iOS recommended touch target size */
+    }
 }
 
-#testSyncBtn {
-    background: var(--bg-tertiary);
-    color: var(--text-primary);
-    border: 1px solid var(--border-color);
-    padding: 5px 10px;
-    border-radius: 5px;
-    margin-left: 10px;
-    cursor: pointer;
-    font-size: 12px;
-    transition: all 0.3s ease;
+/* Accessibility - Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
 }
 
-    #testSyncBtn:hover {
-        background: var(--bg-quaternary);
-        border-color: var(--text-secondary);
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+    .bg-bg-primary {
+        background-color: #000000 !important;
     }
 
-/* Responsive Design */
-@media (max-width: 768px) {
-    .chat-panel {
-        width: 100%;
+    .border-border-custom {
+        border-color: #FFFFFF !important;
     }
+}
 
-    .avatar-panel {
-        display: none;
-    }
-
-    .header h1,
-    .header p {
-        margin-left: 0;
-        text-align: center;
-    }
-
-    .header .logo {
-        position: relative;
-        margin: 0 auto 10px auto;
+/* Print Styles */
+@media print {
+    .no-print {
+        display: none !important;
     }
 }

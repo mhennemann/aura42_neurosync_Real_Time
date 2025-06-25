@@ -1,8 +1,8 @@
-﻿// NeuroSync Avatar Chat - ChatGPT + Adjustable Audio Delay Slider
+﻿// NeuroSync Avatar Chat - Minimalistic Tailwind Design
 let isRecording = false;
 let mediaRecorder;
 let audioChunks = [];
-let currentAudioDelayMs = 80; // Standard Delay
+let currentAudioDelayMs = 40; // Standard Delay
 
 // Audio Delay Management
 function initializeDelaySlider() {
@@ -10,17 +10,14 @@ function initializeDelaySlider() {
     const delayValue = document.getElementById('delayValue');
 
     if (slider && delayValue) {
-        // Slider Event Listener
         slider.addEventListener('input', function () {
             currentAudioDelayMs = parseInt(this.value);
             delayValue.textContent = currentAudioDelayMs + 'ms';
             console.log(`🎵 Audio-Delay geändert auf: ${currentAudioDelayMs}ms`);
 
-            // Delay in LocalStorage speichern
             localStorage.setItem('audioSyncDelay', currentAudioDelayMs);
         });
 
-        // Gespeicherten Delay laden
         const savedDelay = localStorage.getItem('audioSyncDelay');
         if (savedDelay) {
             currentAudioDelayMs = parseInt(savedDelay);
@@ -31,12 +28,10 @@ function initializeDelaySlider() {
     }
 }
 
-// Test-Sync Funktion
 function testSync() {
-    const testText = "Dies ist ein Test der Audio-Synchronisation mit dem angepassten Delay.";
+    const testText = "Test der minimalistischen Audio-Synchronisation.";
     console.log(`🔄 Teste Sync mit ${currentAudioDelayMs}ms Delay`);
 
-    // Test-Nachricht in Input setzen
     const textInput = document.getElementById('textInput');
     if (textInput) {
         textInput.value = testText;
@@ -44,38 +39,104 @@ function testSync() {
     }
 }
 
-// Status Management
 function setStatus(message, type = 'info') {
     const statusEl = document.getElementById('status');
-    statusEl.textContent = message;
-    statusEl.className = `status ${type}`;
-}
+    const statusMobileEl = document.getElementById('statusMobile');
 
-function showAvatarActivity() {
-    setStatus('🤖 ChatGPT denkt nach...', 'processing');
+    // Update both desktop and mobile status
+    if (statusEl) statusEl.textContent = message;
+    if (statusMobileEl) statusMobileEl.textContent = message;
+
+    // Set status colors using Tailwind classes
+    const elements = [statusEl, statusMobileEl].filter(el => el);
+
+    elements.forEach(el => {
+        // Remove all status classes
+        el.classList.remove('text-text-secondary', 'text-green-400', 'text-red-400', 'text-yellow-400', 'text-text-primary');
+
+        // Add appropriate class based on type
+        switch (type) {
+            case 'success':
+                el.classList.add('text-green-400');
+                break;
+            case 'error':
+                el.classList.add('text-red-400');
+                break;
+            case 'warning':
+                el.classList.add('text-yellow-400');
+                break;
+            case 'processing':
+            case 'speaking':
+            case 'ready':
+                el.classList.add('text-text-primary');
+                break;
+            default:
+                el.classList.add('text-text-secondary');
+        }
+    });
 }
 
 function addMessage(sender, text, type = '') {
     const messagesDiv = document.getElementById('chatMessages');
     const messageDiv = document.createElement('div');
-    messageDiv.className = `message ${sender}-message ${type}`;
 
     const timestamp = new Date().toLocaleTimeString('de-DE', {
         hour: '2-digit',
         minute: '2-digit'
     });
 
+    // Apply Tailwind classes based on message type
+    if (sender === 'user') {
+        messageDiv.className = 'mb-4 p-3 rounded-lg bg-bg-quaternary text-right ml-5 text-text-primary border border-border-custom fade-in';
+    } else if (type === 'chatgpt-response') {
+        messageDiv.className = 'mb-4 p-3 rounded-lg bg-bg-secondary mr-5 border border-border-custom fade-in';
+    } else if (type === 'system') {
+        messageDiv.className = 'mb-4 p-3 rounded-lg bg-bg-quaternary mx-2.5 text-center text-text-secondary border border-border-custom fade-in';
+    } else {
+        messageDiv.className = 'mb-4 p-3 rounded-lg bg-bg-secondary mr-5 border border-border-custom fade-in';
+    }
+
     messageDiv.innerHTML = `
-        <strong>${sender === 'user' ? 'Du' : 'Franzi (KI)'}</strong>
-        ${text}
-        <small>${timestamp} ${type === 'chatgpt-response' ? `(Delay: ${currentAudioDelayMs}ms)` : ''}</small>
+        <strong class="block mb-1 text-xs opacity-80 text-text-primary">${sender === 'user' ? 'Du' : 'Franzi (KI)'}</strong>
+        <div class="text-text-primary">${text}</div>
+        <small class="text-xs opacity-60 block mt-1 text-text-muted">${timestamp} ${type === 'chatgpt-response' ? `(Delay: ${currentAudioDelayMs}ms)` : ''}</small>
     `;
 
     messagesDiv.appendChild(messageDiv);
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+    // Also add to mobile chat if exists
+    addMessageMobile(sender, text, type);
 }
 
-// ChatGPT + Audio-Event Based Perfect Synchronization mit Delay-Slider
+function addMessageMobile(sender, message, type = 'user') {
+    const mobileMessages = document.getElementById('chatMessagesMobile');
+    if (!mobileMessages) return;
+
+    const messageDiv = document.createElement('div');
+
+    if (type === 'user') {
+        messageDiv.className = 'bg-bg-quaternary/90 text-text-primary rounded-lg p-3 ml-4 text-sm fade-in border border-border-custom';
+    } else {
+        messageDiv.className = 'bg-bg-tertiary/90 p-3 rounded-lg border border-border-custom text-sm fade-in';
+    }
+
+    messageDiv.innerHTML = `
+        <div class="font-semibold text-xs mb-1 text-text-primary">${sender === 'user' ? 'Du' : 'Avatar'}</div>
+        <div class="break-words text-text-primary">${message}</div>
+        <div class="text-xs opacity-60 mt-1 text-text-muted">${new Date().toLocaleTimeString()}</div>
+    `;
+
+    mobileMessages.appendChild(messageDiv);
+    mobileMessages.scrollTop = mobileMessages.scrollHeight;
+
+    // Limit mobile chat history
+    while (mobileMessages.children.length > 10) {
+        mobileMessages.removeChild(mobileMessages.firstChild);
+    }
+}
+
+// ChatGPT Integration (unchanged core logic)
 async function sendMessage() {
     const textInput = document.getElementById('textInput');
     const text = textInput.value.trim();
@@ -85,13 +146,11 @@ async function sendMessage() {
     addMessage('user', text);
     textInput.value = '';
     setStatus(`🤖 ChatGPT denkt nach (Delay: ${currentAudioDelayMs}ms)...`, 'processing');
-    showAvatarActivity();
 
     try {
         console.log(`🤖 ChatGPT Integration mit ${currentAudioDelayMs}ms Audio-Delay`);
         console.log('📤 User Input:', text);
 
-        // SCHRITT 1: ChatGPT Antwort + Audio + Blendshapes generieren
         const response = await fetch('/api/generate_audio_and_blendshapes', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -104,14 +163,11 @@ async function sendMessage() {
 
             if (result.ready_for_sync && result.audio_data && result.ai_response) {
                 console.log(`🤖 ChatGPT Antwort: "${result.ai_response}"`);
-                console.log(`🎬 Audio-Event Sync bereit: ${result.audio_length}s Audio + ${result.blendshapes_count} frames`);
-
                 setStatus(`🤖 ChatGPT: "${result.ai_response.substring(0, 40)}..." (${currentAudioDelayMs}ms)`, 'processing');
 
-                // ChatGPT Antwort zum Chat hinzufügen (BEVOR Audio startet)
                 addMessage('avatar', result.ai_response, 'chatgpt-response');
 
-                // SCHRITT 2: Audio vorbereiten
+                // Audio processing (unchanged)
                 const audioBytes = atob(result.audio_data);
                 const audioArray = new Uint8Array(audioBytes.length);
                 for (let i = 0; i < audioBytes.length; i++) {
@@ -122,20 +178,8 @@ async function sendMessage() {
                 const audioUrl = URL.createObjectURL(audioBlob);
                 const audio = new Audio(audioUrl);
 
-                // SCHRITT 3: AUDIO-EVENT LISTENER KONFIGURIEREN
                 let livelinkTriggered = false;
 
-                audio.onloadstart = () => {
-                    console.log('🔄 ChatGPT Audio lädt...');
-                    setStatus(`🔄 Franzis Antwort wird vorbereitet (${currentAudioDelayMs}ms Delay)...`, 'processing');
-                };
-
-                audio.oncanplay = () => {
-                    console.log('✅ ChatGPT Audio bereit - wartet auf optimiertes Timing');
-                    setStatus(`✅ Franzi bereit - startet in ${currentAudioDelayMs}ms...`, 'ready');
-                };
-
-                // KRITISCHER EVENT: Audio startet wirklich → LiveLink triggern
                 audio.addEventListener('playing', async () => {
                     if (!livelinkTriggered) {
                         livelinkTriggered = true;
@@ -157,18 +201,13 @@ async function sendMessage() {
                             if (livelinkResponse.ok) {
                                 const livelinkData = await livelinkResponse.json();
                                 console.log(`🎭 ChatGPT LiveLink getriggert (${currentAudioDelayMs}ms):`, livelinkData);
-                                console.log('🎊 PERFEKTE CHATGPT AUDIO-EVENT SYNCHRONISATION!');
-                            } else {
-                                console.error('❌ ChatGPT LiveLink Trigger fehlgeschlagen:', livelinkResponse.status);
                             }
-
                         } catch (livelinkError) {
                             console.error('❌ ChatGPT LiveLink Trigger Fehler:', livelinkError);
                         }
                     }
                 });
 
-                // Progress-Tracking mit Delay-Info
                 audio.ontimeupdate = () => {
                     const progress = (audio.currentTime / audio.duration) * 100;
                     if (progress > 0) {
@@ -176,64 +215,43 @@ async function sendMessage() {
                     }
                 };
 
-                // Audio Ende
                 audio.onended = () => {
                     console.log(`🎊 ChatGPT Audio-Event Synchronisation komplett (${currentAudioDelayMs}ms)!`);
                     setStatus(`✅ Franzi hat geantwortet (Delay: ${currentAudioDelayMs}ms)`, 'success');
                     setTimeout(() => {
-                        setStatus(`Bereit für die nächste Frage • Delay: ${currentAudioDelayMs}ms`, 'ready');
+                        setStatus(`Bereit für die nächste Frage • Minimalistisches Design aktiv`, 'ready');
                     }, 2000);
                     URL.revokeObjectURL(audioUrl);
                 };
 
-                audio.onerror = (e) => {
-                    console.error('❌ ChatGPT Audio Fehler:', e);
-                    setStatus('Audio-Fehler - Franzi hat geantwortet (stumm)', 'error');
-                    URL.revokeObjectURL(audioUrl);
-                };
-
-                // SCHRITT 4: Audio laden und vorbereiten
                 console.log(`🔄 ChatGPT Audio wird für Event-Trigger vorbereitet (${currentAudioDelayMs}ms Delay)...`);
                 setStatus(`🔄 Franzis Antwort wird für Synchronisation vorbereitet (${currentAudioDelayMs}ms)...`, 'processing');
 
-                // Audio vollständig laden
                 await new Promise((resolve, reject) => {
                     audio.oncanplaythrough = resolve;
                     audio.onerror = reject;
                     audio.load();
                 });
 
-                console.log(`🚀 ChatGPT Audio bereit - starte mit ${currentAudioDelayMs}ms Delay...`);
-                setStatus(`🚀 Franzi startet in ${currentAudioDelayMs}ms...`, 'processing');
+                setTimeout(async () => {
+                    try {
+                        await audio.play();
+                        console.log(`🔊 ChatGPT Audio.play() mit ${currentAudioDelayMs}ms Delay`);
+                    } catch (delayedPlayError) {
+                        console.error('❌ ChatGPT Audio play nach Delay Fehler:', delayedPlayError);
+                        setStatus('Browser blockiert Audio - Klicken Sie irgendwo', 'warning');
+                        addMessage('system', '🔊 Klicken Sie irgendwo um Franzis Audio zu aktivieren', 'warning');
 
-                // SCHRITT 5: Audio mit anpassbarem Delay starten
-                try {
-                    // ANPASSBARER AUDIO-DELAY für perfekte Synchronisation
-                    setTimeout(async () => {
-                        try {
-                            await audio.play();
-                            console.log(`🔊 ChatGPT Audio.play() mit ${currentAudioDelayMs}ms Delay - optimierte Sync!`);
-                        } catch (delayedPlayError) {
-                            console.error('❌ ChatGPT Audio play nach Delay Fehler:', delayedPlayError);
-                            setStatus('Browser blockiert Audio - Klicken Sie irgendwo', 'warning');
-
-                            // Fallback: User-Click
-                            addMessage('system', '🔊 Klicken Sie irgendwo um Franzis Audio zu aktivieren', 'warning');
-                            document.addEventListener('click', async () => {
-                                try {
-                                    await audio.play();
-                                    console.log(`🔊 ChatGPT Audio nach User-Interaction + ${currentAudioDelayMs}ms Delay gestartet`);
-                                } catch (e) {
-                                    console.error('ChatGPT Audio weiterhin blockiert:', e);
-                                }
-                            }, { once: true });
-                        }
-                    }, currentAudioDelayMs); // ← ANPASSBARER DELAY VOM SLIDER!
-
-                } catch (playError) {
-                    console.error('❌ ChatGPT Audio Timing-Setup Fehler:', playError);
-                    setStatus('Audio-Timing Fehler', 'error');
-                }
+                        document.addEventListener('click', async () => {
+                            try {
+                                await audio.play();
+                                console.log(`🔊 ChatGPT Audio nach User-Interaction gestartet`);
+                            } catch (e) {
+                                console.error('ChatGPT Audio weiterhin blockiert:', e);
+                            }
+                        }, { once: true });
+                    }
+                }, currentAudioDelayMs);
 
             } else {
                 console.error('❌ ChatGPT Server nicht bereit für Sync:', result);
@@ -254,9 +272,10 @@ async function sendMessage() {
     }
 }
 
-// Voice Recording Functions (unverändert)
+// Recording Functions
 async function toggleRecording() {
     const micButton = document.getElementById('micButton');
+    const micButtonMobile = document.getElementById('micButtonMobile');
 
     if (!isRecording) {
         try {
@@ -290,9 +309,18 @@ async function toggleRecording() {
 
             mediaRecorder.start(1000);
             isRecording = true;
-            micButton.textContent = '🔴 Stop';
-            micButton.classList.add('recording');
-            setStatus(`🎤 Aufnahme läuft (Delay: ${currentAudioDelayMs}ms)...`, 'recording');
+
+            // Update both buttons
+            if (micButton) {
+                micButton.textContent = '🔴 Stop';
+                micButton.classList.add('pulse-pink');
+            }
+            if (micButtonMobile) {
+                micButtonMobile.textContent = '⏹️ Stoppen';
+                micButtonMobile.classList.add('pulse-pink');
+            }
+
+            setStatus(`🎤 Aufnahme läuft (Delay: ${currentAudioDelayMs}ms)...`, 'processing');
 
         } catch (error) {
             console.error('❌ Mikrofon Fehler:', error);
@@ -303,8 +331,17 @@ async function toggleRecording() {
             mediaRecorder.stop();
         }
         isRecording = false;
-        micButton.textContent = '🎤 Aufnehmen';
-        micButton.classList.remove('recording');
+
+        // Update both buttons
+        if (micButton) {
+            micButton.textContent = '🎤 Aufnehmen';
+            micButton.classList.remove('pulse-pink');
+        }
+        if (micButtonMobile) {
+            micButtonMobile.textContent = '🎤 Aufnehmen';
+            micButtonMobile.classList.remove('pulse-pink');
+        }
+
         setStatus('🔄 Transkribiere Ihre Frage...', 'processing');
     }
 }
@@ -325,6 +362,9 @@ async function transcribeAudio(audioBlob) {
 
             if (transcription.trim()) {
                 document.getElementById('textInput').value = transcription;
+                const mobileInput = document.getElementById('textInputMobile');
+                if (mobileInput) mobileInput.value = transcription;
+
                 setStatus('✅ Frage erkannt: "' + transcription.substring(0, 30) + '..."', 'success');
                 addMessage('system', `Frage erkannt: "${transcription}"`, 'transcription');
 
@@ -347,17 +387,24 @@ async function transcribeAudio(audioBlob) {
 // Utility Functions
 function clearChat() {
     const messagesDiv = document.getElementById('chatMessages');
-    messagesDiv.innerHTML = `
-        <div class="message avatar-message">
-            <strong>Franzi (KI)</strong>
-            Hallo! Ich bin Franzi mit anpassbarer Audio-Synchronisation! 
-            Nutzen Sie den Delay-Slider oben um die perfekte Lippensynchronisation einzustellen.
-            Frag mich einfach etwas!
-            <small>ChatGPT + Audio-Delay-Slider bereit (${currentAudioDelayMs}ms)</small>
+    const mobileMessages = document.getElementById('chatMessagesMobile');
+
+    const welcomeMessage = `
+        <div class="mb-4 p-3 rounded-lg bg-bg-secondary mr-5 border border-border-custom fade-in">
+            <strong class="block mb-1 text-xs opacity-80 text-text-primary">Franzi (KI)</strong>
+            <div class="text-text-primary">Hallo! Minimalistisches Design mit Schwarz-Weiß Palette. Pink nur für wichtige Action-Buttons!</div>
+            <small class="text-xs opacity-60 block mt-1 text-text-muted">ChatGPT + Audio-Delay-Slider bereit (${currentAudioDelayMs}ms)</small>
         </div>
     `;
 
-    // Conversation History löschen
+    if (messagesDiv) messagesDiv.innerHTML = welcomeMessage;
+    if (mobileMessages) mobileMessages.innerHTML = `
+        <div class="bg-bg-tertiary/90 p-3 rounded-lg border border-border-custom text-sm fade-in">
+            <div class="font-semibold text-xs mb-1 text-text-primary">Avatar</div>
+            <div>Bereit zum Chatten!</div>
+        </div>
+    `;
+
     fetch('/api/clear_conversation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
@@ -367,56 +414,127 @@ function clearChat() {
         }
     });
 
-    setStatus(`Chat gelöscht • Audio-Delay: ${currentAudioDelayMs}ms`, 'ready');
+    setStatus(`Chat gelöscht • Minimalistisches Design aktiv`, 'ready');
     console.log(`🧹 Chat gelöscht - ChatGPT + Delay-Slider (${currentAudioDelayMs}ms) aktiv`);
 }
 
 function toggleStream() {
     const iframe = document.getElementById('pixelStreamIframe');
-    if (iframe) {
-        iframe.style.display = iframe.style.display === 'none' ? 'block' : 'none';
-        const visible = iframe.style.display !== 'none';
-        setStatus(visible ? 'Avatar-Stream sichtbar' : 'Avatar-Stream ausgeblendet', 'info');
-    }
+    const iframeMobile = document.getElementById('pixelStreamIframeMobile');
+
+    [iframe, iframeMobile].forEach(el => {
+        if (el) {
+            el.style.display = el.style.display === 'none' ? 'block' : 'none';
+        }
+    });
+
+    const visible = iframe && iframe.style.display !== 'none';
+    setStatus(visible ? 'Avatar-Stream sichtbar' : 'Avatar-Stream ausgeblendet', 'info');
 }
 
 function resetStream() {
     const iframe = document.getElementById('pixelStreamIframe');
-    if (iframe) {
-        const originalSrc = iframe.src;
-        iframe.src = '';
-        setTimeout(() => {
-            iframe.src = originalSrc;
-        }, 100);
-        setStatus('Avatar-Stream zurückgesetzt', 'info');
+    const iframeMobile = document.getElementById('pixelStreamIframeMobile');
+
+    [iframe, iframeMobile].forEach(el => {
+        if (el) {
+            const originalSrc = el.src;
+            el.src = '';
+            setTimeout(() => {
+                el.src = originalSrc;
+            }, 100);
+        }
+    });
+
+    setStatus('Avatar-Stream zurückgesetzt', 'info');
+}
+
+// Mobile Functions
+function sendMessageMobile() {
+    const input = document.getElementById('textInputMobile');
+    const desktopInput = document.getElementById('textInput');
+    if (input && desktopInput) {
+        desktopInput.value = input.value;
+        sendMessage();
+        input.value = '';
     }
 }
 
-// Event Listeners
-document.addEventListener('DOMContentLoaded', function () {
-    const textInput = document.getElementById('textInput');
+function toggleRecordingMobile() {
+    toggleRecording();
+}
 
-    if (textInput) {
-        textInput.addEventListener('keypress', function (e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage();
-            }
-        });
+function clearChatMobile() {
+    clearChat();
+}
 
-        textInput.focus();
-        textInput.placeholder = "Stellen Sie Franzi eine Frage...";
+function resetStreamMobile() {
+    resetStream();
+}
+
+function toggleStreamMobile() {
+    toggleStream();
+}
+
+function testSyncMobile() {
+    testSync();
+}
+
+function toggleMobilePanel() {
+    const panel = document.getElementById('mobilePanel');
+    const overlay = document.getElementById('mobilePanelOverlay');
+    if (panel && overlay) {
+        const isOpen = !panel.classList.contains('translate-x-full');
+
+        if (isOpen) {
+            panel.classList.add('translate-x-full');
+            overlay.classList.add('opacity-0', 'pointer-events-none');
+        } else {
+            panel.classList.remove('translate-x-full');
+            overlay.classList.remove('opacity-0', 'pointer-events-none');
+        }
+    }
+}
+
+function toggleMobileChat() {
+    const chatMessages = document.getElementById('chatMessagesMobile');
+    if (chatMessages) {
+        chatMessages.classList.toggle('hidden');
+    }
+}
+
+// Sync mobile and desktop sliders
+function syncDelaySliders() {
+    const desktopSlider = document.getElementById('audioDelaySlider');
+    const mobileSlider = document.getElementById('audioDelaySliderMobile');
+    const delayValue = document.getElementById('delayValue');
+    const delayValueMobile = document.getElementById('delayValueMobile');
+    const currentDelayInfo = document.getElementById('currentDelayInfo');
+
+    function updateValues(value) {
+        currentAudioDelayMs = parseInt(value);
+
+        if (delayValue) delayValue.textContent = value + 'ms';
+        if (delayValueMobile) delayValueMobile.textContent = value + 'ms';
+        if (currentDelayInfo) currentDelayInfo.textContent = value + 'ms';
+
+        localStorage.setItem('audioSyncDelay', currentAudioDelayMs);
     }
 
-    // Delay-Slider initialisieren
-    initializeDelaySlider();
+    if (desktopSlider) {
+        desktopSlider.addEventListener('input', function () {
+            updateValues(this.value);
+            if (mobileSlider) mobileSlider.value = this.value;
+        });
+    }
 
-    checkSystemHealth();
-    setStatus(`ChatGPT + Delay-Slider geladen • Audio-Delay: ${currentAudioDelayMs}ms`, 'ready');
-
-    console.log('🎉 NeuroSync Avatar Chat - ChatGPT + Audio-Delay-Slider geladen!');
-    console.log(`🤖 Features: ChatGPT + Audio-Event Sync + Anpassbarer Delay (${currentAudioDelayMs}ms)`);
-});
+    if (mobileSlider) {
+        mobileSlider.addEventListener('input', function () {
+            updateValues(this.value);
+            if (desktopSlider) desktopSlider.value = this.value;
+        });
+    }
+}
 
 // System Health Check
 async function checkSystemHealth() {
@@ -429,7 +547,7 @@ async function checkSystemHealth() {
                 setStatus('⚠️ NeuroSync Server offline', 'error');
                 addMessage('system', 'NeuroSync AI Server ist nicht erreichbar.', 'error');
             } else if (health.ai_integration === 'ChatGPT (OpenAI)') {
-                setStatus(`✅ ChatGPT + Audio-Delay aktiv (${currentAudioDelayMs}ms)`, 'ready');
+                setStatus(`✅ ChatGPT + Minimalistisches Design aktiv (${currentAudioDelayMs}ms)`, 'ready');
             } else {
                 setStatus('✅ NeuroSync System verbunden', 'ready');
             }
@@ -440,10 +558,65 @@ async function checkSystemHealth() {
     }
 }
 
+// Event Listeners
+document.addEventListener('DOMContentLoaded', function () {
+    const textInput = document.getElementById('textInput');
+    const textInputMobile = document.getElementById('textInputMobile');
+
+    if (textInput) {
+        textInput.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+        textInput.focus();
+        textInput.placeholder = "Stellen Sie Franzi eine Frage...";
+    }
+
+    if (textInputMobile) {
+        textInputMobile.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessageMobile();
+            }
+        });
+    }
+
+    // Initialize all components
+    initializeDelaySlider();
+    syncDelaySliders();
+    checkSystemHealth();
+
+    setStatus(`Minimalistisches Design geladen • Audio-Delay: ${currentAudioDelayMs}ms`, 'ready');
+
+    console.log('🎉 NeuroSync Avatar Chat - Minimalistic Tailwind Design loaded!');
+    console.log(`🎨 Design: Schwarz-Weiß minimalistisch + Pink Action-Buttons`);
+    console.log(`🤖 Features: ChatGPT + Audio-Event Sync + Delay (${currentAudioDelayMs}ms)`);
+});
+
+// Mobile optimizations
+window.addEventListener('resize', function () {
+    if (window.innerWidth >= 1024) {
+        const panel = document.getElementById('mobilePanel');
+        const overlay = document.getElementById('mobilePanelOverlay');
+        if (panel) panel.classList.add('translate-x-full');
+        if (overlay) overlay.classList.add('opacity-0', 'pointer-events-none');
+    }
+});
+
+// Mobile viewport fix
+function setMobileVH() {
+    let vh = window.innerHeight * 0.01;
+    document.documentElement.style.setProperty('--vh', `${vh}px`);
+}
+window.addEventListener('resize', setMobileVH);
+setMobileVH();
+
+// Regular health checks
 setInterval(checkSystemHealth, 30000);
 
-console.log('🚀 NeuroSync Avatar Chat - ChatGPT + Anpassbarer Audio-Delay-Slider');
-console.log('🤖 ChatGPT: Intelligente Antworten mit Conversation Memory');
-console.log('🎭 LiveLink: Audio-Event basierte Synchronisation');
-console.log('🎵 Audio-Delay: Anpassbar von 0-200ms für perfekte Lippensync');
-console.log('🎊 Franzi: Deutsche KI-Avatar mit optimaler Synchronisation!');
+console.log('🚀 NeuroSync Avatar Chat - Minimalistic Tailwind CSS Design');
+console.log('🎨 Schwarz-Weiß Palette + Pink Action-Buttons');
+console.log('📱 Responsive Desktop + Mobile Layout');
+console.log('🤖 ChatGPT + Audio-Sync + Avatar Integration');
