@@ -287,7 +287,7 @@ def transcribe():
         }
         
         response = requests.post(
-            'https://api.elevenlabs.io/v1/speech-to-text',
+            'https://api.elevenlabs.io/v2/speech-to-text',
             files=files,
             data=data,
             headers=headers,
