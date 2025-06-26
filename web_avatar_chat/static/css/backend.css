@@ -1,0 +1,30 @@
+﻿/* Backend-spezifische Styles - erweitert Frontend-Farbwelt */
+:root {
+    --bg-primary: #000000;
+    --bg-secondary: rgba(255, 255, 255, 0.05);
+    --border-color: rgba(255, 255, 255, 0.1);
+    --text-primary: #ffffff;
+    --text-secondary: #9ca3af;
+    --accent-pink: #ec4899;
+    --accent-pink-glow: rgba(236, 72, 153, 0.3);
+}
+
+.module-card {
+    background: rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    @apply rounded-lg p-6 hover:bg-white/5 transition-all duration-200;
+}
+
+.form-input {
+    @apply w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 focus:border-pink-500 focus:outline-none transition-colors;
+}
+
+.btn-primary {
+    @apply bg-pink-500 hover:bg-pink-600 text-white px-6 py-2 rounded-lg transition-all duration-200;
+    box-shadow: 0 0 20px rgba(236, 72, 153, 0.3);
+}
+
+.btn-secondary {
+    @apply bg-white/10 hover:bg-white/20 text-white px-6 py-2 rounded-lg border border-white/20 transition-all duration-200;
+}

@@ -347,6 +347,23 @@ def get_voices():
         }
     })
 
+# Backend-Module importieren
+try:
+    from modules import personality, animations, memory, triggers
+    
+    # Module registrieren
+    app.register_blueprint(personality.bp, url_prefix='/backend')
+    # app.register_blueprint(animations.bp, url_prefix='/backend')
+    # app.register_blueprint(memory.bp, url_prefix='/backend')
+    # app.register_blueprint(triggers.bp, url_prefix='/backend')
+    
+    @app.route('/backend')
+    def backend_home():
+        return render_template('modules/personality.html')
+        
+except ImportError:
+    print("⚠️ Backend-Module noch nicht vollständig - nur Frontend aktiv")
+
 if __name__ == '__main__':
     print("🚀 NeuroSync Web-Interface mit ChatGPT Integration...")
     print("🎯 NeuroSync Server:", NEUROSYNC_SERVER)
@@ -361,3 +378,4 @@ if __name__ == '__main__':
     print("📋 Verfügbare Stimmen:", list(VOICE_MAPPING.keys()))
     print("🎊 CHATGPT INTEGRATION: Intelligente KI-Antworten mit perfekter Synchronisation!")
     app.run(host='127.0.0.1', port=9000, debug=False)
+
