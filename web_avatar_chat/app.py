@@ -31,6 +31,14 @@ def index():
 def get_chatgpt_response(user_message):
     """Holt intelligente Antwort von ChatGPT"""
     try:
+        # Live-Backend Konfiguration verwenden (falls verfügbar)
+        live_config = getattr(get_chatgpt_response, 'live_config', {})
+        chat_params = live_config.get('chat_parameter', {})
+        
+        # Standard-Parameter mit Live-Override
+        temperature = chat_params.get('temperature', 0.7)
+        max_tokens = chat_params.get('max_tokens', 100)
+        
         # Conversation History für Kontext
         messages = [
             {
@@ -47,13 +55,14 @@ def get_chatgpt_response(user_message):
         messages.append({"role": "user", "content": user_message})
         
         print(f"🤖 Sende an ChatGPT: {user_message}")
+        print(f"🎛️ Parameter: temp={temperature}, tokens={max_tokens}")
         
-        # OpenAI API Call
+        # OpenAI API Call mit Live-Parametern
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=messages,
-            max_tokens=100,  # Kürzere Antworten für bessere Audio-Sync
-            temperature=0.7,
+            max_tokens=max_tokens,
+            temperature=temperature,
             stream=False
         )
         
@@ -227,6 +236,26 @@ def clear_conversation():
         "message": "Conversation History gelöscht"
     })
 
+@app.route('/api/update_config', methods=['POST'])
+def update_config():
+    """Empfängt Live-Konfiguration vom FastAPI Backend"""
+    try:
+        config = request.get_json()
+        
+        # Konfiguration für ChatGPT speichern
+        get_chatgpt_response.live_config = config
+        
+        print(f"🔥 Live-Konfiguration empfangen: {config}")
+        
+        return jsonify({
+            "status": "success",
+            "message": "Konfiguration live aktualisiert"
+        })
+        
+    except Exception as e:
+        print(f"❌ Config-Update Fehler: {e}")
+        return jsonify({"error": str(e)}), 500
+
 # Legacy-Endpoints
 @app.route('/api/synthesize_and_blendshapes', methods=['POST'])
 def synthesize_and_blendshapes():
@@ -323,7 +352,7 @@ def health():
         neurosync_status = "offline"
     
     return jsonify({
-        "status": "Web-Interface mit ChatGPT + Audio-Event Synchronisation",
+        "status": "Web-Interface mit ChatGPT + Live Backend Integration",
         "neurosync_server": neurosync_status,
         "server_url": NEUROSYNC_SERVER,
         "available_voices": list(VOICE_MAPPING.keys()),
@@ -332,7 +361,8 @@ def health():
         "sync_mode": "chatgpt_audio_event_sync",
         "ai_integration": "ChatGPT (OpenAI)",
         "conversation_history": len(conversation_history),
-        "livelink_integration": "enabled"
+        "livelink_integration": "enabled",
+        "backend_integration": "FastAPI WebSocket"
     })
 
 @app.route('/api/voices')
@@ -347,23 +377,6 @@ def get_voices():
         }
     })
 
-# Backend-Module importieren
-try:
-    from modules import personality, animations, memory, triggers
-    
-    # Module registrieren
-    app.register_blueprint(personality.bp, url_prefix='/backend')
-    # app.register_blueprint(animations.bp, url_prefix='/backend')
-    # app.register_blueprint(memory.bp, url_prefix='/backend')
-    # app.register_blueprint(triggers.bp, url_prefix='/backend')
-    
-    @app.route('/backend')
-    def backend_home():
-        return render_template('modules/personality.html')
-        
-except ImportError:
-    print("⚠️ Backend-Module noch nicht vollständig - nur Frontend aktiv")
-
 if __name__ == '__main__':
     print("🚀 NeuroSync Web-Interface mit ChatGPT Integration...")
     print("🎯 NeuroSync Server:", NEUROSYNC_SERVER)
@@ -371,11 +384,11 @@ if __name__ == '__main__':
     print("🔗 LiveLink Integration: Browser-gesteuert")
     print("🤖 AI Integration: ChatGPT (OpenAI)")
     print("🎵 Sync Modus: ChatGPT + Audio-Event basierte Synchronisation")
+    print("🔥 Backend Integration: FastAPI WebSocket Live-Updates")
     print("🌐 Web-Interface verfügbar unter:")
     print("   - Lokal: http://127.0.0.1:9000")
     print("   - HTTPS: https://neurosync.aura42.de")
-    print("   - HTTPS: https://avatar.aura42.de")
+    print("   - Backend: https://backend.aura42.de")
     print("📋 Verfügbare Stimmen:", list(VOICE_MAPPING.keys()))
-    print("🎊 CHATGPT INTEGRATION: Intelligente KI-Antworten mit perfekter Synchronisation!")
-    app.run(host='127.0.0.1', port=9000, debug=False)
-
+    print("🎊 LIVE BACKEND: Real-time Avatar-Konfiguration!")
+    app.run(host='0.0.0.0', port=9000, debug=False)
