@@ -167,6 +167,7 @@ def generate_audio_and_blendshapes():
             "message": str(e)
         }), 500
 
+@app.route('/api/trigger_livelink', methods=['POST'])
 def trigger_livelink():
     """Browser-gesteuerter LiveLink-Trigger MIT Emotion-Offset"""
     try:
