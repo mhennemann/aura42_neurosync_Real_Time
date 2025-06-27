@@ -3,6 +3,7 @@ import requests
 import os
 import base64
 import openai
+import sys
 
 app = Flask(__name__)
 
@@ -24,8 +25,38 @@ VOICE_MAPPING = {
 # Conversation History (in Produktion: Redis/Database verwenden)
 conversation_history = []
 
-# 🆕 GLOBAL: Emotion für nächsten ChatGPT-Call
-current_emotion_request = None
+# 🆕 PROFESSIONELLES EMOTE-SYSTEM LADEN
+sys.path.append('/opt/neurosync/aura42_neurosync_Real_Time/web_avatar_chat/utils/emote_sender')
+
+try:
+    from send_emote import EmoteConnect
+    EMOTE_SYSTEM_AVAILABLE = True
+    print("🎭 Professionelles Emote-System geladen!")
+except ImportError as e:
+    print(f"⚠️ Emote-System nicht verfügbar: {e}")
+    EMOTE_SYSTEM_AVAILABLE = False
+
+def detect_german_emotion_for_csv_system(text):
+    """Deutsche Emotion-Detection für professionelles CSV-Animations-System"""
+    text_lower = text.lower()
+    
+    # Mapping zu den vorhandenen Emotion-Ordnern:
+    emotion_keywords = {
+        'Happy': ['glücklich', 'fröhlich', 'super', 'toll', 'fantastisch', 'genial', 'wunderbar', 'großartig', 'perfekt', 'klasse'],
+        'Sad': ['traurig', 'schlecht', 'schlimm', 'deprimiert', 'niedergeschlagen', 'verzweifelt', 'betrübt', 'melancholisch'],
+        'Angry': ['wütend', 'sauer', 'ärgerlich', 'genervt', 'frustriert', 'verärgert', 'zornig', 'aufgebracht'],
+        'Surprised': ['überrascht', 'erstaunt', 'wow', 'krass', 'unglaublich', 'erstaunlich', 'verblüfft', 'baff'],
+        'Fearful': ['angst', 'ängstlich', 'furcht', 'panik', 'besorgt', 'nervös', 'erschrocken', 'beunruhigt'],
+        'Disgusted': ['ekel', 'widerlich', 'abscheulich', 'ekelhaft', 'angewidert', 'abstoßend']
+    }
+    
+    # Text nach Emotion-Keywords durchsuchen
+    for emotion, keywords in emotion_keywords.items():
+        if any(keyword in text_lower for keyword in keywords):
+            print(f"🎭 Deutsche Emotion erkannt: '{emotion}' für Text: '{text}'")
+            return emotion
+    
+    return None  # Keine spezifische Emotion erkannt
 
 @app.route('/')
 def index():
@@ -89,12 +120,15 @@ def get_chatgpt_response(user_message):
 
 @app.route('/api/generate_audio_and_blendshapes', methods=['POST'])
 def generate_audio_and_blendshapes():
-    """Generiert Audio + Blendshapes für ChatGPT Antwort mit NeuroSync-Emotion-Support"""
+    """Generiert Audio + Blendshapes mit automatischer deutscher Emotion-Detection"""
     try:
         data = request.get_json()
         user_text = data.get('text', '')
         voice = data.get('voice', 'franzi')
         print(f"🎯 User Input: {user_text} (Stimme: {voice})")
+        
+        # 🆕 AUTOMATISCHE DEUTSCHE EMOTION-DETECTION
+        detected_emotion = detect_german_emotion_for_csv_system(user_text)
         
         # ChatGPT Antwort holen
         ai_response = get_chatgpt_response(user_text)
@@ -102,23 +136,22 @@ def generate_audio_and_blendshapes():
         # Voice-ID ermitteln
         voice_id = VOICE_MAPPING.get(voice, VOICE_MAPPING['default'])
         
-        # 🆕 EMOTION FÜR NEUROSYNC VORBEREITEN
-        global current_emotion_request
-        emotion = current_emotion_request
+        # 🆕 EMOTION AN PROFESSIONELLES EMOTE-SYSTEM SENDEN
+        if detected_emotion and EMOTE_SYSTEM_AVAILABLE:
+            try:
+                print(f"🎭 Sende Emotion an professionelles Emote-System: {detected_emotion}")
+                EmoteConnect.send_emote(detected_emotion)
+                print(f"✅ Emotion '{detected_emotion}' erfolgreich getriggert!")
+            except Exception as e:
+                print(f"❌ Emote-System Fehler: {e}")
         
-        # Request-Daten für NeuroSync
+        # Request-Daten für NeuroSync (normale Audio+Blendshapes)
         request_data = {
             "text": ai_response,  # ← ChatGPT Antwort statt User Input!
             "voice": voice_id
         }
         
-        # 🆕 EMOTION HINZUFÜGEN falls gesetzt
-        if emotion:
-            request_data["emotion"] = emotion
-            request_data["emotion_intensity"] = 0.8
-            print(f"🎭 Sende Emotion an NeuroSync: {emotion}")
-        
-        # AI-Antwort an NeuroSync senden für Audio+Blendshapes mit Emotion
+        # AI-Antwort an NeuroSync senden für Audio+Blendshapes
         response = requests.post(
             f"{NEUROSYNC_SERVER}/synthesize_and_blendshapes",
             json=request_data,
@@ -128,11 +161,6 @@ def generate_audio_and_blendshapes():
         print(f"✅ NeuroSync Antwort: {response.status_code}")
         
         if response.status_code == 200:
-            # Emotion nach erfolgreichem Aufruf zurücksetzen
-            if emotion:
-                current_emotion_request = None
-                print(f"🎭 Emotion '{emotion}' angewendet und zurückgesetzt")
-            
             try:
                 from utils.multi_part_return import parse_multipart_response
                 audio_bytes, blendshapes_list = parse_multipart_response(response)
@@ -156,8 +184,8 @@ def generate_audio_and_blendshapes():
                     response_data = {
                         "status": "success",
                         "message": "ChatGPT Antwort für Audio-Sync bereit",
-                        "user_text": user_text,        # Was User geschrieben hat
-                        "ai_response": ai_response,     # Was ChatGPT geantwortet hat
+                        "user_text": user_text,
+                        "ai_response": ai_response,
                         "voice": voice,
                         "audio_data": audio_base64,
                         "audio_length": audio_length_seconds,
@@ -166,14 +194,14 @@ def generate_audio_and_blendshapes():
                         "ready_for_sync": True
                     }
                     
-                    # 🆕 EMOTION-INFO hinzufügen falls verwendet
-                    if emotion:
-                        response_data["emotion_applied"] = emotion
-                        response_data["emotion_intensity"] = 0.8
-                        response_data["emotion_method"] = "neurosync_native"
+                    # 🆕 EMOTION-INFO hinzufügen
+                    if detected_emotion:
+                        response_data["emotion_detected"] = detected_emotion
+                        response_data["emotion_method"] = "professional_csv_animations"
+                        response_data["emotion_system"] = "emote_connect"
                     
                     return jsonify(response_data)
-                
+                    
             except Exception as e:
                 print(f"❌ Multipart parsing error: {e}")
                 import traceback
@@ -206,7 +234,7 @@ def trigger_livelink():
         if 'current_blendshapes' not in globals() or not current_blendshapes:
             return jsonify({"status": "error", "message": "Keine Blendshapes verfügbar"}), 400
 
-        # LiveLink-Code (Emotion ist bereits in den Blendshapes integriert)
+        # LiveLink-Code (Emotion läuft parallel über Emote-System)
         from livelink.connect.livelink_init import create_socket_connection, initialize_py_face
         from livelink.send_to_unreal import pre_encode_facial_data, send_pre_encoded_data_to_unreal
         from threading import Event, Thread
@@ -242,44 +270,44 @@ def trigger_livelink():
         print(f"❌ LiveLink Fehler: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
-# 🆕 NEUE EINFACHE EMOTION-ROUTE
-@app.route('/api/set_emotion', methods=['POST'])
-def set_emotion():
-    """Setzt Emotion für nächste ChatGPT-Antwort (NeuroSync Native)"""
+# 🆕 PROFESSIONELLE EMOTION-ROUTES
+@app.route('/api/trigger_professional_emotion', methods=['POST'])
+def trigger_professional_emotion():
+    """Triggert Emotionen über professionelles EmoteConnect-System"""
     try:
         data = request.get_json()
-        emotion = data.get('emotion', '').lower()
+        emotion = data.get('emotion', '')
         
-        # Unterstützte Emotionen (NeuroSync Native)
-        supported_emotions = [
-            'happy', 'sad', 'angry', 'surprised', 
-            'glücklich', 'traurig', 'wütend', 'überrascht',
-            'extrem'  # Für Testing
-        ]
+        # Verfügbare Emotionen validieren
+        available_emotions = ['Happy', 'Sad', 'Angry', 'Surprised', 'Fearful', 'Disgusted', 'Neutral']
         
-        if emotion not in supported_emotions:
+        if emotion not in available_emotions:
             return jsonify({
-                "status": "error", 
-                "message": f"Emotion '{emotion}' nicht unterstützt",
-                "supported_emotions": supported_emotions
+                "status": "error",
+                "message": f"Emotion '{emotion}' nicht verfügbar",
+                "available_emotions": available_emotions
             }), 400
         
-        # Global setzen für nächste ChatGPT-Anfrage
-        global current_emotion_request
-        current_emotion_request = emotion
+        if not EMOTE_SYSTEM_AVAILABLE:
+            return jsonify({
+                "status": "error",
+                "message": "Emote-System nicht verfügbar"
+            }), 500
         
-        print(f"🎭 Emotion für NeuroSync gesetzt: {emotion}")
+        # Emotion über professionelles System triggern
+        EmoteConnect.send_emote(emotion)
+        print(f"🎭 Professionelle Emotion getriggert: {emotion}")
         
         return jsonify({
             "status": "success",
-            "message": f"Emotion '{emotion}' für nächste Antwort gesetzt",
+            "message": f"Professionelle Emotion '{emotion}' getriggert",
             "emotion": emotion,
-            "method": "neurosync_native",
-            "intensity": 0.8
+            "system": "emote_connect_csv_animations",
+            "port": 7777
         })
         
     except Exception as e:
-        print(f"❌ Emotion-Setting Fehler: {e}")
+        print(f"❌ Professionelle Emotion Fehler: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
 @app.route('/api/conversation_history', methods=['GET'])
@@ -412,7 +440,7 @@ def transcribe():
 
 @app.route('/health')
 def health():
-    """System-Health-Check mit Emotion-Support-Info"""
+    """System-Health-Check mit professionellem Emotion-Support"""
     try:
         response = requests.options(f"{NEUROSYNC_SERVER}/synthesize_and_blendshapes", timeout=5)
         neurosync_status = "online" if response.status_code in [200, 405] else "offline"
@@ -420,7 +448,7 @@ def health():
         neurosync_status = "offline"
     
     return jsonify({
-        "status": "NeuroSync Web-Interface mit nativer Emotion-Integration",
+        "status": "NeuroSync Web-Interface mit professionellem Emotion-System",
         "neurosync_server": neurosync_status,
         "server_url": NEUROSYNC_SERVER,
         "available_voices": list(VOICE_MAPPING.keys()),
@@ -432,13 +460,12 @@ def health():
         "livelink_integration": "enabled",
         "backend_integration": "FastAPI WebSocket",
         "emotion_support": {
-            "enabled": True,
-            "method": "neurosync_native",
-            "supported_emotions": [
-                "happy", "sad", "angry", "surprised", 
-                "glücklich", "traurig", "wütend", "überrascht", "extrem"
-            ],
-            "current_emotion": current_emotion_request
+            "enabled": EMOTE_SYSTEM_AVAILABLE,
+            "method": "professional_csv_animations",
+            "system": "emote_connect_port_7777",
+            "available_emotions": ["Happy", "Sad", "Angry", "Surprised", "Fearful", "Disgusted", "Neutral"],
+            "automatic_detection": True,
+            "german_keywords": True
         }
     })
 
@@ -456,18 +483,22 @@ def get_voices():
     })
 
 if __name__ == '__main__':
-    print("🚀 NeuroSync Web-Interface mit nativer Emotion-Integration...")
+    print("🚀 NeuroSync Web-Interface mit professionellem Emotion-System...")
     print("🎯 NeuroSync Server:", NEUROSYNC_SERVER)
     print("🔊 Standard-Stimme: Franzi (Deutsche TTS)")
     print("🔗 LiveLink Integration: Browser-gesteuert")
     print("🤖 AI Integration: ChatGPT (OpenAI)")
-    print("🎭 Emotion Support: NeuroSync Native (happy, sad, angry, surprised, glücklich, traurig, überrascht, extrem)")
-    print("🎵 Sync Modus: ChatGPT + Audio-Event basierte Synchronisation")
+    if EMOTE_SYSTEM_AVAILABLE:
+        print("🎭 Emotion System: Professionelle CSV-Animationen (EmoteConnect Port 7777)")
+        print("🇩🇪 Deutsche Keywords: Happy, Sad, Angry, Surprised, Fearful, Disgusted")
+    else:
+        print("⚠️ Emotion System: Nicht verfügbar")
+    print("🎵 Sync Modus: ChatGPT + Audio-Event + Parallel Emotion-Animationen")
     print("🔥 Backend Integration: FastAPI WebSocket Live-Updates")
     print("🌐 Web-Interface verfügbar unter:")
     print("   - Lokal: http://127.0.0.1:9000")
     print("   - HTTPS: https://neurosync.aura42.de")
     print("   - Backend: https://backend.aura42.de")
     print("📋 Verfügbare Stimmen:", list(VOICE_MAPPING.keys()))
-    print("🎊 NATIVE EMOTION: Direkte NeuroSync-Integration!")
+    print("🎊 PROFESSIONELLES EMOTION-SYSTEM: Original NeuroSync CSV-Animationen!")
     app.run(host='0.0.0.0', port=9000, debug=False)
