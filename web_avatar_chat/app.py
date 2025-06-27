@@ -430,7 +430,7 @@ def trigger_emotion_animation():
                 'JawOpen': 0.3,             # Mund leicht offen
                 'MouthDimpleLeft': 0.4,     # Grübchen
                 'MouthDimpleRight': 0.4
-            }
+            },
 
             'MAXIMUM': {
                 'MouthSmileLeft': 1.0,      # 100% statt 80%
