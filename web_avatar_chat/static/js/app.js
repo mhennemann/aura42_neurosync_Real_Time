@@ -4,7 +4,7 @@ let mediaRecorder;
 let audioChunks = [];
 let currentAudioDelayMs = 40; // Standard Delay
 
-// 🆕 EMOTION DETECTION SYSTEM
+// 🆕 EMOTION DETECTION SYSTEM - KORRIGIERT
 class EmotionDetector {
     constructor() {
         this.emotionTriggers = {};
@@ -19,6 +19,13 @@ class EmotionDetector {
             console.log('🎭 Emotion-Trigger geladen:', this.emotionTriggers);
         } catch (error) {
             console.error('❌ Fehler beim Laden der Trigger:', error);
+            // Fallback-Trigger für Tests
+            this.emotionTriggers = {
+                'extrem': 'dummy',
+                'mega': 'dummy',
+                'glücklich': 'dummy',
+                'traurig': 'dummy'
+            };
         }
     }
 
@@ -28,7 +35,6 @@ class EmotionDetector {
         for (const [emotion, animationFile] of Object.entries(this.emotionTriggers)) {
             if (textLower.includes(emotion)) {
                 console.log(`🎭 Emotion erkannt: "${emotion}" in "${text}"`);
-                console.log(`📁 Animation-Datei: ${animationFile}`);
 
                 return {
                     detected: true,
@@ -42,9 +48,9 @@ class EmotionDetector {
         return { detected: false };
     }
 
-    async triggerEmotionAnimation(emotion, animationFile) {
+    async triggerEmotionAnimation(emotion, animationFile = null) {
         try {
-            console.log(`🎬 Triggere Emotion-Animation: ${emotion} → ${animationFile}`);
+            console.log(`🎬 Triggere Emotion-Animation: ${emotion}`);
 
             const response = await fetch('/api/trigger_emotion_animation', {
                 method: 'POST',
@@ -52,13 +58,17 @@ class EmotionDetector {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    emotion: emotion,
-                    animationFile: animationFile
+                    emotion: emotion
+                    // Keine animationFile mehr - verwenden Emotion-Offsets!
                 })
             });
 
             if (response.ok) {
-                this.showEmotionNotification(`🎭 ${emotion.charAt(0).toUpperCase() + emotion.slice(1)}-Animation getriggert`);
+                const result = await response.json();
+                console.log(`✅ Emotion-Offset gesetzt: ${emotion}`, result);
+                this.showEmotionNotification(`🎭 ${emotion.charAt(0).toUpperCase() + emotion.slice(1)}-Emotion beim nächsten Sprechen aktiv`);
+            } else {
+                console.error(`❌ Emotion-API Fehler:`, response.status);
             }
 
         } catch (error) {
