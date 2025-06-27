@@ -378,7 +378,7 @@ def get_voices():
     })
 @app.route('/api/trigger_emotion_animation', methods=['POST'])
 def trigger_emotion_animation():
-    """Triggert spezifische Emotion-Animation"""
+    """Triggert spezifische Emotion-Animation - Korrigierte Version"""
     try:
         data = request.get_json()
         emotion = data.get('emotion', '')
@@ -386,83 +386,74 @@ def trigger_emotion_animation():
         
         print(f"🎭 Emotion-Animation angefordert: {emotion} → {animation_file}")
         
-        # Prüfen ob Animation-Datei existiert
         if not os.path.exists(animation_file):
-            print(f"❌ Animation-Datei nicht gefunden: {animation_file}")
-            return jsonify({
-                "status": "error",
-                "message": f"Animation-Datei nicht gefunden: {animation_file}"
-            }), 404
+            return jsonify({"status": "error", "message": "Animation nicht gefunden"}), 404
         
-        # 🆕 ANIMATION AN LIVELINK SENDEN!
-        try:
-            # CSV-Animation laden
-            import pandas as pd
-            animation_df = pd.read_csv(animation_file)
-            
-            print(f"📊 Animation geladen: {len(animation_df)} Frames")
-            
-            # Animation-Daten für LiveLink vorbereiten
-            blendshapes_list = []
-            for _, row in animation_df.iterrows():
-                frame_data = {}
-                # Alle Blendshape-Spalten kopieren (außer Frame/Timecode)
-                for col in animation_df.columns:
-                    if col not in ['Frame', 'Timecode', 'BlendshapeCount']:
-                        frame_data[col] = float(row[col]) if pd.notna(row[col]) else 0.0
-                blendshapes_list.append(frame_data)
-            
-            print(f"🎬 Emotion-Animation für LiveLink vorbereitet: {emotion} ({len(blendshapes_list)} frames)")
-            
-            # LiveLink Animation starten
-            from livelink.connect.livelink_init import create_socket_connection, initialize_py_face
-            from livelink.send_to_unreal import pre_encode_facial_data, send_pre_encoded_data_to_unreal
-            from threading import Event, Thread
-            
-            def execute_emotion_livelink():
-                try:
-                    py_face = initialize_py_face()
-                    socket_connection = create_socket_connection()
-                    encoded_data = pre_encode_facial_data(blendshapes_list, py_face)
-                    
-                    start_event = Event()
-                    start_event.set()
-                    
-                    print(f"🎭 {emotion.title()}-Animation startet für {len(blendshapes_list)} frames...")
-                    send_pre_encoded_data_to_unreal(encoded_data, start_event, 30, socket_connection)
-                    print(f"🎭 {emotion.title()}-Animation komplett")
-                    
-                except Exception as e:
-                    print(f"❌ {emotion} LiveLink Fehler: {e}")
-                    import traceback
-                    traceback.print_exc()
-            
-            # Animation in separatem Thread abspielen
-            animation_thread = Thread(target=execute_emotion_livelink)
-            animation_thread.start()
-            
-            return jsonify({
-                "status": "success",
-                "message": f"Emotion-Animation {emotion} wird abgespielt",
-                "emotion": emotion,
-                "animationFile": animation_file,
-                "frames": len(blendshapes_list),
-                "livelink_triggered": True
-            })
-            
-        except Exception as e:
-            print(f"❌ Animation-Verarbeitung Fehler: {e}")
-            return jsonify({
-                "status": "error", 
-                "message": f"Animation konnte nicht verarbeitet werden: {e}"
-            }), 500
+        # CSV laden
+        import pandas as pd
+        animation_df = pd.read_csv(animation_file)
+        
+        print(f"📊 Animation geladen: {len(animation_df)} Frames")
+        
+        # 🆕 DIREKTE ÜBERTRAGUNG OHNE INDEX-MAPPING
+        blendshapes_list = []
+        for _, row in animation_df.iterrows():
+            frame_data = {}
+            # ALLE Blendshape-Spalten direkt übernehmen (außer Metadaten)
+            for col in animation_df.columns:
+                if col not in ['Timecode', 'BlendshapeCount']:
+                    frame_data[col] = float(row[col]) if pd.notna(row[col]) else 0.0
+            blendshapes_list.append(frame_data)
+        
+        print(f"🎬 Emotion-Animation direkt übertragen: {emotion} ({len(blendshapes_list)} frames)")
+        print(f"📋 Blendshapes pro Frame: {len(blendshapes_list[0]) if blendshapes_list else 0}")
+        
+        # Global für LiveLink setzen (wie bei ChatGPT)
+        global current_blendshapes
+        current_blendshapes = blendshapes_list
+        
+        # LiveLink Animation starten (GLEICHER WEG WIE CHATGPT)
+        from livelink.connect.livelink_init import create_socket_connection, initialize_py_face
+        from livelink.send_to_unreal import pre_encode_facial_data, send_pre_encoded_data_to_unreal
+        from threading import Event, Thread
+        
+        def execute_emotion_livelink():
+            try:
+                py_face = initialize_py_face()
+                socket_connection = create_socket_connection()
+                encoded_data = pre_encode_facial_data(blendshapes_list, py_face)
+                
+                start_event = Event()
+                start_event.set()
+                
+                print(f"🎭 {emotion.title()}-Animation startet für {len(blendshapes_list)} frames...")
+                send_pre_encoded_data_to_unreal(encoded_data, start_event, 30, socket_connection)
+                print(f"🎭 {emotion.title()}-Animation komplett")
+                
+            except Exception as e:
+                print(f"❌ {emotion} LiveLink Fehler: {e}")
+                import traceback
+                traceback.print_exc()
+        
+        # Animation abspielen
+        animation_thread = Thread(target=execute_emotion_livelink)
+        animation_thread.start()
+        
+        return jsonify({
+            "status": "success",
+            "message": f"Emotion-Animation {emotion} direkt übertragen",
+            "emotion": emotion,
+            "animationFile": animation_file,
+            "frames": len(blendshapes_list),
+            "blendshapes_per_frame": len(blendshapes_list[0]) if blendshapes_list else 0,
+            "livelink_triggered": True
+        })
         
     except Exception as e:
         print(f"❌ Emotion-Animation Fehler: {e}")
-        return jsonify({
-            "status": "error",
-            "message": str(e)
-        }), 500
+        import traceback
+        traceback.print_exc()
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == '__main__':
     print("🚀 NeuroSync Web-Interface mit ChatGPT Integration...")
