@@ -59,7 +59,7 @@ class EmotionDetector {
                 },
                 body: JSON.stringify({
                     emotion: emotion
-                    // Keine animationFile mehr - verwenden Emotion-Offsets!
+                    // KEINE animationFile mehr!
                 })
             });
 
