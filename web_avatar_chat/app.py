@@ -396,26 +396,40 @@ def trigger_emotion_animation():
         # 🆕 EMOTION ALS BLENDSHAPE-OFFSET (wie NeuroSync AI macht)
         emotion_offsets = {
             'glücklich': {
-                'MouthSmileLeft': 0.3,      # Lächeln verstärken
+                'MouthSmileLeft': 0.3,
                 'MouthSmileRight': 0.3,
-                'CheekSquintLeft': 0.2,     # Wangen anheben
+                'CheekSquintLeft': 0.2,
                 'CheekSquintRight': 0.2,
-                'EyeSquintLeft': 0.1,       # Augen leicht zusammenkneifen
+                'EyeSquintLeft': 0.1,
                 'EyeSquintRight': 0.1
             },
             'traurig': {
-                'MouthFrownLeft': 0.4,      # Mundwinkel nach unten
+                'MouthFrownLeft': 0.4,
                 'MouthFrownRight': 0.4,
-                'BrowDownLeft': 0.3,        # Augenbrauen senken
+                'BrowDownLeft': 0.3,
                 'BrowDownRight': 0.3,
-                'BrowInnerUp': 0.2          # Innere Augenbrauen heben
+                'BrowInnerUp': 0.2
             },
             'überrascht': {
-                'EyeWideLeft': 0.4,         # Augen weit öffnen
+                'EyeWideLeft': 0.4,
                 'EyeWideRight': 0.4,
-                'BrowOuterUpLeft': 0.3,     # Augenbrauen heben
+                'BrowOuterUpLeft': 0.3,
                 'BrowOuterUpRight': 0.3,
-                'JawOpen': 0.2              # Mund leicht öffnen
+                'JawOpen': 0.2
+            },
+            # 🆕 EXTREME EMOTION
+            'EXTREM': {
+                'MouthSmileLeft': 0.8,      # MAXIMUM Lächeln
+                'MouthSmileRight': 0.8,
+                'CheekSquintLeft': 0.7,     # EXTREME Wangen
+                'CheekSquintRight': 0.7,
+                'EyeSquintLeft': 0.6,       # STARK zusammengekniffene Augen
+                'EyeSquintRight': 0.6,
+                'BrowOuterUpLeft': 0.5,     # Augenbrauen hoch
+                'BrowOuterUpRight': 0.5,
+                'JawOpen': 0.3,             # Mund leicht offen
+                'MouthDimpleLeft': 0.4,     # Grübchen
+                'MouthDimpleRight': 0.4
             }
         }
         
