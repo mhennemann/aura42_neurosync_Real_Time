@@ -378,13 +378,13 @@ def get_voices():
     })
 @app.route('/api/trigger_emotion_animation', methods=['POST'])
 def trigger_emotion_animation():
-    """Triggert Emotion-Animation über NeuroSync AI (wie ChatGPT)"""
+    """Triggert Emotion-Animation mit GLEICHEM CODE wie ChatGPT LiveLink"""
     try:
         data = request.get_json()
         emotion = data.get('emotion', '')
         animation_file = data.get('animationFile', '')
         
-        print(f"🎭 Emotion-Animation via NeuroSync: {emotion} → {animation_file}")
+        print(f"🎭 Emotion-Animation angefordert: {emotion} → {animation_file}")
         
         if not os.path.exists(animation_file):
             return jsonify({"status": "error", "message": "Animation nicht gefunden"}), 404
@@ -395,42 +395,58 @@ def trigger_emotion_animation():
         
         print(f"📊 Animation geladen: {len(animation_df)} Frames")
         
-        # CSV-Daten für NeuroSync AI formatieren (GLEICH WIE CHATGPT)
-        blendshapes_data = []
+        # Blendshapes formatieren (gleich wie ChatGPT)
+        blendshapes_list = []
         for _, row in animation_df.iterrows():
             frame_data = {}
             for col in animation_df.columns:
                 if col not in ['Timecode', 'BlendshapeCount']:
                     frame_data[col] = float(row[col]) if pd.notna(row[col]) else 0.0
-            blendshapes_data.append(frame_data)
+            blendshapes_list.append(frame_data)
         
-        # 🆕 AN NEUROSYNC AI SENDEN (GLEICHER WEG WIE CHATGPT)
-        response = requests.post(
-            f"{NEUROSYNC_SERVER}/play_blendshapes_only",
-            json={
-                "blendshapes": blendshapes_data,
-                "emotion": emotion,
-                "fps": 30
-            },
-            timeout=30
-        )
+        # 🆕 GLOBAL SETZEN (wie ChatGPT es macht)
+        global current_blendshapes
+        current_blendshapes = blendshapes_list
         
-        if response.status_code == 200:
-            print(f"✅ Emotion-Animation via NeuroSync gesendet: {emotion}")
-            return jsonify({
-                "status": "success",
-                "message": f"Emotion {emotion} via NeuroSync abgespielt",
-                "frames": len(blendshapes_data),
-                "method": "neurosync_ai",
-                "livelink_triggered": True
-            })
-        else:
-            print(f"❌ NeuroSync Fehler: {response.status_code}")
-            return jsonify({
-                "status": "error",
-                "message": f"NeuroSync AI Fehler: {response.status_code}"
-            }), 500
-            
+        print(f"🎬 Emotion-Blendshapes global gesetzt: {emotion} ({len(blendshapes_list)} frames)")
+        
+        # 🆕 EXAKT DER GLEICHE LIVELINK-CODE WIE CHATGPT
+        from livelink.connect.livelink_init import create_socket_connection, initialize_py_face
+        from livelink.send_to_unreal import pre_encode_facial_data, send_pre_encoded_data_to_unreal
+        from threading import Event, Thread
+        
+        def execute_emotion_livelink():
+            try:
+                py_face = initialize_py_face()
+                socket_connection = create_socket_connection()
+                encoded_data = pre_encode_facial_data(current_blendshapes, py_face)
+                
+                start_event = Event()
+                start_event.set()
+                
+                print(f"🎭 {emotion.title()} LiveLink Animation startet für {len(current_blendshapes)} frames...")
+                send_pre_encoded_data_to_unreal(encoded_data, start_event, 30, socket_connection)  # 30fps für Emotionen
+                print(f"🎭 {emotion.title()} LiveLink Animation komplett")
+                
+            except Exception as e:
+                print(f"❌ {emotion} LiveLink Fehler: {e}")
+                import traceback
+                traceback.print_exc()
+        
+        # Animation in Thread starten (wie ChatGPT)
+        animation_thread = Thread(target=execute_emotion_livelink)
+        animation_thread.start()
+        
+        return jsonify({
+            "status": "success",
+            "message": f"Emotion-Animation {emotion} getriggert (ChatGPT-Methode)",
+            "emotion": emotion,
+            "animationFile": animation_file,
+            "frames": len(blendshapes_list),
+            "livelink_triggered": True,
+            "method": "chatgpt_livelink_clone"
+        })
+        
     except Exception as e:
         print(f"❌ Emotion-Animation Fehler: {e}")
         import traceback
