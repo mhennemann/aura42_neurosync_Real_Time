@@ -378,7 +378,7 @@ def get_voices():
     })
 @app.route('/api/trigger_emotion_animation', methods=['POST'])
 def trigger_emotion_animation():
-    """Triggert Emotion-Animation mit GLEICHEM CODE wie ChatGPT LiveLink"""
+    """Triggert Emotion-Animation mit numerischer Konvertierung"""
     try:
         data = request.get_json()
         emotion = data.get('emotion', '')
@@ -395,22 +395,51 @@ def trigger_emotion_animation():
         
         print(f"📊 Animation geladen: {len(animation_df)} Frames")
         
-        # Blendshapes formatieren (gleich wie ChatGPT)
+        # 🆕 ARKit-Namen zu numerischen Indizes konvertieren (wie NeuroSync AI)
+        arkit_to_index = {
+            'EyeBlinkLeft': 0, 'EyeLookDownLeft': 1, 'EyeLookInLeft': 2, 'EyeLookOutLeft': 3,
+            'EyeLookUpLeft': 4, 'EyeSquintLeft': 5, 'EyeWideLeft': 6, 'EyeBlinkRight': 7,
+            'EyeLookDownRight': 8, 'EyeLookInRight': 9, 'EyeLookOutRight': 10, 'EyeLookUpRight': 11,
+            'EyeSquintRight': 12, 'EyeWideRight': 13, 'JawForward': 14, 'JawRight': 15,
+            'JawLeft': 16, 'JawOpen': 17, 'MouthClose': 18, 'MouthFunnel': 19,
+            'MouthPucker': 20, 'MouthRight': 21, 'MouthLeft': 22, 'MouthSmileLeft': 23,
+            'MouthSmileRight': 24, 'MouthFrownLeft': 25, 'MouthFrownRight': 26, 'MouthDimpleLeft': 27,
+            'MouthDimpleRight': 28, 'MouthStretchLeft': 29, 'MouthStretchRight': 30, 'MouthRollLower': 31,
+            'MouthRollUpper': 32, 'MouthShrugLower': 33, 'MouthShrugUpper': 34, 'MouthPressLeft': 35,
+            'MouthPressRight': 36, 'MouthLowerDownLeft': 37, 'MouthLowerDownRight': 38, 'MouthUpperUpLeft': 39,
+            'MouthUpperUpRight': 40, 'BrowDownLeft': 41, 'BrowDownRight': 42, 'BrowInnerUp': 43,
+            'BrowOuterUpLeft': 44, 'BrowOuterUpRight': 45, 'CheekPuff': 46, 'CheekSquintLeft': 47,
+            'CheekSquintRight': 48, 'NoseSneerLeft': 49, 'NoseSneerRight': 50, 'TongueOut': 51,
+            'HeadYaw': 52, 'HeadPitch': 53, 'HeadRoll': 54, 'LeftEyeYaw': 55,
+            'LeftEyePitch': 56, 'LeftEyeRoll': 57, 'RightEyeYaw': 58, 'RightEyePitch': 59, 'RightEyeRoll': 60
+        }
+        
+        # 🆕 NUMERISCHE BLENDSHAPES ERSTELLEN (wie NeuroSync AI)
         blendshapes_list = []
         for _, row in animation_df.iterrows():
+            # Numerisches Dict erstellen (0-60)
             frame_data = {}
-            for col in animation_df.columns:
-                if col not in ['Timecode', 'BlendshapeCount']:
-                    frame_data[col] = float(row[col]) if pd.notna(row[col]) else 0.0
+            
+            # Alle Indizes mit 0.0 initialisieren
+            for i in range(61):
+                frame_data[i] = 0.0
+            
+            # ARKit-Namen zu numerischen Indizes konvertieren
+            for arkit_name, index in arkit_to_index.items():
+                if arkit_name in animation_df.columns:
+                    value = float(row[arkit_name]) if pd.notna(row[arkit_name]) else 0.0
+                    frame_data[index] = value
+                    
             blendshapes_list.append(frame_data)
         
-        # 🆕 GLOBAL SETZEN (wie ChatGPT es macht)
+        # Global setzen (wie ChatGPT)
         global current_blendshapes
         current_blendshapes = blendshapes_list
         
-        print(f"🎬 Emotion-Blendshapes global gesetzt: {emotion} ({len(blendshapes_list)} frames)")
+        print(f"🎬 Emotion-Blendshapes numerisch konvertiert: {emotion} ({len(blendshapes_list)} frames)")
+        print(f"📋 Sample Frame Keys: {list(blendshapes_list[0].keys())[:10]}... (numerisch)")
         
-        # 🆕 EXAKT DER GLEICHE LIVELINK-CODE WIE CHATGPT
+        # EXAKT DER GLEICHE LIVELINK-CODE WIE CHATGPT
         from livelink.connect.livelink_init import create_socket_connection, initialize_py_face
         from livelink.send_to_unreal import pre_encode_facial_data, send_pre_encoded_data_to_unreal
         from threading import Event, Thread
@@ -425,7 +454,7 @@ def trigger_emotion_animation():
                 start_event.set()
                 
                 print(f"🎭 {emotion.title()} LiveLink Animation startet für {len(current_blendshapes)} frames...")
-                send_pre_encoded_data_to_unreal(encoded_data, start_event, 30, socket_connection)  # 30fps für Emotionen
+                send_pre_encoded_data_to_unreal(encoded_data, start_event, 30, socket_connection)
                 print(f"🎭 {emotion.title()} LiveLink Animation komplett")
                 
             except Exception as e:
@@ -433,18 +462,18 @@ def trigger_emotion_animation():
                 import traceback
                 traceback.print_exc()
         
-        # Animation in Thread starten (wie ChatGPT)
+        # Animation in Thread starten
         animation_thread = Thread(target=execute_emotion_livelink)
         animation_thread.start()
         
         return jsonify({
             "status": "success",
-            "message": f"Emotion-Animation {emotion} getriggert (ChatGPT-Methode)",
+            "message": f"Emotion-Animation {emotion} numerisch konvertiert",
             "emotion": emotion,
             "animationFile": animation_file,
             "frames": len(blendshapes_list),
             "livelink_triggered": True,
-            "method": "chatgpt_livelink_clone"
+            "conversion": "arkit_to_numeric"
         })
         
     except Exception as e:
