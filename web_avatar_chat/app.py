@@ -167,44 +167,54 @@ def generate_audio_and_blendshapes():
             "message": str(e)
         }), 500
 
-@app.route('/api/trigger_livelink', methods=['POST'])
 def trigger_livelink():
-    """Browser-gesteuerter LiveLink-Trigger für ChatGPT Antworten"""
+    """Browser-gesteuerter LiveLink-Trigger MIT Emotion-Offset"""
     try:
         print("🎭 Browser triggert LiveLink für ChatGPT Antwort...")
-        
-        global current_blendshapes
+
+        global current_blendshapes, current_emotion_offset
         if 'current_blendshapes' not in globals() or not current_blendshapes:
-            return jsonify({
-                "status": "error",
-                "message": "Keine Blendshapes verfügbar"
-            }), 400
-        
+            return jsonify({"status": "error", "message": "Keine Blendshapes verfügbar"}), 400
+
+        # 🆕 EMOTION-OFFSET ANWENDEN (wenn gesetzt)
+        if 'current_emotion_offset' in globals() and current_emotion_offset:
+            print(f"🎭 Emotion-Offset wird angewendet: {current_emotion_offset}")
+            
+            # Emotion zu ALLEN Frames hinzufügen
+            for frame in current_blendshapes:
+                for blendshape_name, offset_value in current_emotion_offset.items():
+                    if blendshape_name in frame:
+                        # Additive Anwendung (Sprache + Emotion)
+                        frame[blendshape_name] = min(1.0, frame[blendshape_name] + offset_value)
+            
+            # Emotion-Offset nach Anwendung zurücksetzen
+            current_emotion_offset = None
+            print("🎭 Emotion-Offset angewendet und zurückgesetzt")
+
+        # Normaler LiveLink-Code...
         from livelink.connect.livelink_init import create_socket_connection, initialize_py_face
         from livelink.send_to_unreal import pre_encode_facial_data, send_pre_encoded_data_to_unreal
         from threading import Event, Thread
-        
+
         def execute_livelink():
             try:
                 py_face = initialize_py_face()
                 socket_connection = create_socket_connection()
                 encoded_data = pre_encode_facial_data(current_blendshapes, py_face)
-                
+
                 start_event = Event()
                 start_event.set()
-                
+
                 print(f"🎭 ChatGPT LiveLink Animation startet für {len(current_blendshapes)} frames...")
                 send_pre_encoded_data_to_unreal(encoded_data, start_event, 60, socket_connection)
                 print("🎭 ChatGPT LiveLink Animation komplett")
-                
+
             except Exception as e:
                 print(f"❌ ChatGPT LiveLink Fehler: {e}")
-                import traceback
-                traceback.print_exc()
-        
-        livelink_thread = Thread(target=execute_livelink)
-        livelink_thread.start()
-        
+
+        animation_thread = Thread(target=execute_livelink)
+        animation_thread.start()
+
         return jsonify({
             "status": "success",
             "message": "ChatGPT LiveLink Animation gestartet",
@@ -212,11 +222,8 @@ def trigger_livelink():
         })
         
     except Exception as e:
-        print(f"❌ ChatGPT LiveLink Trigger Fehler: {e}")
-        return jsonify({
-            "status": "error",
-            "message": str(e)
-        }), 500
+        print(f"❌ LiveLink Fehler: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 @app.route('/api/conversation_history', methods=['GET'])
 def get_conversation_history():
@@ -378,94 +385,58 @@ def get_voices():
     })
 @app.route('/api/trigger_emotion_animation', methods=['POST'])
 def trigger_emotion_animation():
-    """Triggert Emotion-Animation OHNE ChatGPT-Konflikt"""
+    """Modifiziert ChatGPT-Blendshapes mit emotionalen Offset-Werten"""
     try:
         data = request.get_json()
         emotion = data.get('emotion', '')
-        animation_file = data.get('animationFile', '')
         
-        print(f"🎭 Emotion-Animation angefordert: {emotion} → {animation_file}")
+        print(f"🎭 Emotion-Modifikation angefordert: {emotion}")
         
-        if not os.path.exists(animation_file):
-            return jsonify({"status": "error", "message": "Animation nicht gefunden"}), 404
-        
-        # CSV laden und konvertieren
-        import pandas as pd
-        animation_df = pd.read_csv(animation_file)
-        
-        # ARKit zu numerisch konvertieren (gleicher Code wie vorhin)
-        arkit_to_index = {
-            'EyeBlinkLeft': 0, 'EyeLookDownLeft': 1, 'EyeLookInLeft': 2, 'EyeLookOutLeft': 3,
-            'EyeLookUpLeft': 4, 'EyeSquintLeft': 5, 'EyeWideLeft': 6, 'EyeBlinkRight': 7,
-            'EyeLookDownRight': 8, 'EyeLookInRight': 9, 'EyeLookOutRight': 10, 'EyeLookUpRight': 11,
-            'EyeSquintRight': 12, 'EyeWideRight': 13, 'JawForward': 14, 'JawRight': 15,
-            'JawLeft': 16, 'JawOpen': 17, 'MouthClose': 18, 'MouthFunnel': 19,
-            'MouthPucker': 20, 'MouthRight': 21, 'MouthLeft': 22, 'MouthSmileLeft': 23,
-            'MouthSmileRight': 24, 'MouthFrownLeft': 25, 'MouthFrownRight': 26, 'MouthDimpleLeft': 27,
-            'MouthDimpleRight': 28, 'MouthStretchLeft': 29, 'MouthStretchRight': 30, 'MouthRollLower': 31,
-            'MouthRollUpper': 32, 'MouthShrugLower': 33, 'MouthShrugUpper': 34, 'MouthPressLeft': 35,
-            'MouthPressRight': 36, 'MouthLowerDownLeft': 37, 'MouthLowerDownRight': 38, 'MouthUpperUpLeft': 39,
-            'MouthUpperUpRight': 40, 'BrowDownLeft': 41, 'BrowDownRight': 42, 'BrowInnerUp': 43,
-            'BrowOuterUpLeft': 44, 'BrowOuterUpRight': 45, 'CheekPuff': 46, 'CheekSquintLeft': 47,
-            'CheekSquintRight': 48, 'NoseSneerLeft': 49, 'NoseSneerRight': 50, 'TongueOut': 51,
-            'HeadYaw': 52, 'HeadPitch': 53, 'HeadRoll': 54, 'LeftEyeYaw': 55,
-            'LeftEyePitch': 56, 'LeftEyeRoll': 57, 'RightEyeYaw': 58, 'RightEyePitch': 59, 'RightEyeRoll': 60
+        # 🆕 EMOTION ALS BLENDSHAPE-OFFSET (wie NeuroSync AI macht)
+        emotion_offsets = {
+            'glücklich': {
+                'MouthSmileLeft': 0.3,      # Lächeln verstärken
+                'MouthSmileRight': 0.3,
+                'CheekSquintLeft': 0.2,     # Wangen anheben
+                'CheekSquintRight': 0.2,
+                'EyeSquintLeft': 0.1,       # Augen leicht zusammenkneifen
+                'EyeSquintRight': 0.1
+            },
+            'traurig': {
+                'MouthFrownLeft': 0.4,      # Mundwinkel nach unten
+                'MouthFrownRight': 0.4,
+                'BrowDownLeft': 0.3,        # Augenbrauen senken
+                'BrowDownRight': 0.3,
+                'BrowInnerUp': 0.2          # Innere Augenbrauen heben
+            },
+            'überrascht': {
+                'EyeWideLeft': 0.4,         # Augen weit öffnen
+                'EyeWideRight': 0.4,
+                'BrowOuterUpLeft': 0.3,     # Augenbrauen heben
+                'BrowOuterUpRight': 0.3,
+                'JawOpen': 0.2              # Mund leicht öffnen
+            }
         }
         
-        # Numerische Blendshapes erstellen
-        emotion_blendshapes = []  # 🆕 SEPARATE VARIABLE!
-        for _, row in animation_df.iterrows():
-            frame_data = {}
-            for i in range(61):
-                frame_data[i] = 0.0
-            
-            for arkit_name, index in arkit_to_index.items():
-                if arkit_name in animation_df.columns:
-                    value = float(row[arkit_name]) if pd.notna(row[arkit_name]) else 0.0
-                    frame_data[index] = value
-                    
-            emotion_blendshapes.append(frame_data)
+        if emotion not in emotion_offsets:
+            return jsonify({"status": "error", "message": f"Emotion '{emotion}' nicht verfügbar"}), 400
         
-        print(f"🎬 Emotion-Blendshapes separat erstellt: {emotion} ({len(emotion_blendshapes)} frames)")
+        # 🆕 GLOBAL EMOTION-OFFSET SETZEN (wird beim nächsten ChatGPT angewendet)
+        global current_emotion_offset
+        current_emotion_offset = emotion_offsets[emotion]
         
-        # 🆕 SEPARATE LIVELINK-VERBINDUNG (nicht global!)
-        from livelink.connect.livelink_init import create_socket_connection, initialize_py_face
-        from livelink.send_to_unreal import pre_encode_facial_data, send_pre_encoded_data_to_unreal
-        from threading import Event, Thread
-        
-        def execute_emotion_livelink():
-            try:
-                py_face = initialize_py_face()
-                socket_connection = create_socket_connection()
-                encoded_data = pre_encode_facial_data(emotion_blendshapes, py_face)  # 🆕 SEPARATE DATEN!
-                
-                start_event = Event()
-                start_event.set()
-                
-                print(f"🎭 {emotion.title()} Animation startet (separate Verbindung)...")
-                send_pre_encoded_data_to_unreal(encoded_data, start_event, 30, socket_connection)
-                print(f"🎭 {emotion.title()} Animation komplett")
-                
-            except Exception as e:
-                print(f"❌ {emotion} LiveLink Fehler: {e}")
-                import traceback
-                traceback.print_exc()
-        
-        # Animation in Thread starten
-        animation_thread = Thread(target=execute_emotion_livelink)
-        animation_thread.start()
+        print(f"🎭 Emotion-Offset gesetzt: {emotion} → {current_emotion_offset}")
         
         return jsonify({
-            "status": "success",
-            "message": f"Emotion-Animation {emotion} separat getriggert",
+            "status": "success", 
+            "message": f"Emotion {emotion} wird bei nächster Sprache angewendet",
             "emotion": emotion,
-            "frames": len(emotion_blendshapes),
-            "livelink_triggered": True,
-            "conflict_free": True
+            "offset_values": current_emotion_offset,
+            "method": "additive_blendshapes"
         })
         
     except Exception as e:
-        print(f"❌ Emotion-Animation Fehler: {e}")
+        print(f"❌ Emotion-Offset Fehler: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == '__main__':
