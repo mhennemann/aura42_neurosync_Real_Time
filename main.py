@@ -1,4 +1,4 @@
-import os
+﻿import os
 from threading import Thread
 from flask import Flask, request, jsonify, Response
 from datetime import datetime
@@ -13,7 +13,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # choose which GPU to use, 0 is main.
 import torch
 from models.neurosync.config import config
 from utils.utils_emb import process_embedding
-from utils.utils_audio import process_transcription, process_blendshapes, generate_speech_segment_tts 
+from utils.utils_audio import process_transcription, process_blendshapes, generate_speech_segment_tts
 from utils.utils_image import process_image, process_clip, process_pdf_imagery
 
 from utils.model_loader import load_audio_models, load_embedding_model, load_image_models, load_tts_model
@@ -56,6 +56,129 @@ def time_endpoint(func):
         return result
     wrapper.__name__ = func.__name__
     return wrapper
+
+# 🆕 EMOTION MODIFICATION FUNCTION
+def apply_emotion_to_blendshapes(blendshapes_list, emotion, intensity):
+    """
+    Modifies blendshapes by adding emotion coefficients to the existing facial animation.
+    Uses the native NeuroSync approach with additive blendshape modification.
+    """
+    
+    # Define emotion mappings (adjust these values based on your model)
+    emotion_mappings = {
+        'happy': {
+            'MouthSmileLeft': 0.8 * intensity,      # Strong smile
+            'MouthSmileRight': 0.8 * intensity,
+            'CheekSquintLeft': 0.6 * intensity,     # Raised cheeks
+            'CheekSquintRight': 0.6 * intensity,
+            'EyeSquintLeft': 0.4 * intensity,       # Squinted eyes (joy)
+            'EyeSquintRight': 0.4 * intensity
+        },
+        'sad': {
+            'MouthFrownLeft': 0.7 * intensity,      # Downturned mouth
+            'MouthFrownRight': 0.7 * intensity,
+            'BrowDownLeft': 0.5 * intensity,        # Lowered brows
+            'BrowDownRight': 0.5 * intensity,
+            'BrowInnerUp': 0.4 * intensity          # Sad brow expression
+        },
+        'angry': {
+            'BrowDownLeft': 0.8 * intensity,        # Furrowed brow
+            'BrowDownRight': 0.8 * intensity,
+            'EyeSquintLeft': 0.6 * intensity,       # Narrowed eyes
+            'EyeSquintRight': 0.6 * intensity,
+            'MouthPressLeft': 0.5 * intensity,      # Pressed lips
+            'MouthPressRight': 0.5 * intensity
+        },
+        'surprised': {
+            'EyeWideLeft': 0.9 * intensity,         # Wide open eyes
+            'EyeWideRight': 0.9 * intensity,
+            'BrowOuterUpLeft': 0.7 * intensity,     # Raised eyebrows
+            'BrowOuterUpRight': 0.7 * intensity,
+            'JawOpen': 0.3 * intensity              # Slightly open mouth
+        },
+        'glücklich': {  # German version
+            'MouthSmileLeft': 0.8 * intensity,
+            'MouthSmileRight': 0.8 * intensity,
+            'CheekSquintLeft': 0.6 * intensity,
+            'CheekSquintRight': 0.6 * intensity,
+            'EyeSquintLeft': 0.4 * intensity,
+            'EyeSquintRight': 0.4 * intensity
+        },
+        'traurig': {  # German version
+            'MouthFrownLeft': 0.7 * intensity,
+            'MouthFrownRight': 0.7 * intensity,
+            'BrowDownLeft': 0.5 * intensity,
+            'BrowDownRight': 0.5 * intensity,
+            'BrowInnerUp': 0.4 * intensity
+        },
+        'überrascht': {  # German version
+            'EyeWideLeft': 0.9 * intensity,
+            'EyeWideRight': 0.9 * intensity,
+            'BrowOuterUpLeft': 0.7 * intensity,
+            'BrowOuterUpRight': 0.7 * intensity,
+            'JawOpen': 0.3 * intensity
+        },
+        'extrem': {  # Extreme emotion for testing
+            'MouthSmileLeft': 1.0 * intensity,
+            'MouthSmileRight': 1.0 * intensity,
+            'CheekSquintLeft': 0.8 * intensity,
+            'CheekSquintRight': 0.8 * intensity,
+            'EyeSquintLeft': 0.7 * intensity,
+            'EyeSquintRight': 0.7 * intensity,
+            'JawOpen': 0.4 * intensity,
+            'BrowOuterUpLeft': 0.6 * intensity,
+            'BrowOuterUpRight': 0.6 * intensity
+        }
+    }
+    
+    # ARKit blendshape name to index mapping
+    arkit_to_index = {
+        'EyeBlinkLeft': 0, 'EyeLookDownLeft': 1, 'EyeLookInLeft': 2, 'EyeLookOutLeft': 3,
+        'EyeLookUpLeft': 4, 'EyeSquintLeft': 5, 'EyeWideLeft': 6, 'EyeBlinkRight': 7,
+        'EyeLookDownRight': 8, 'EyeLookInRight': 9, 'EyeLookOutRight': 10, 'EyeLookUpRight': 11,
+        'EyeSquintRight': 12, 'EyeWideRight': 13, 'JawForward': 14, 'JawRight': 15,
+        'JawLeft': 16, 'JawOpen': 17, 'MouthClose': 18, 'MouthFunnel': 19,
+        'MouthPucker': 20, 'MouthRight': 21, 'MouthLeft': 22, 'MouthSmileLeft': 23,
+        'MouthSmileRight': 24, 'MouthFrownLeft': 25, 'MouthFrownRight': 26, 'MouthDimpleLeft': 27,
+        'MouthDimpleRight': 28, 'MouthStretchLeft': 29, 'MouthStretchRight': 30, 'MouthRollLower': 31,
+        'MouthRollUpper': 32, 'MouthShrugLower': 33, 'MouthShrugUpper': 34, 'MouthPressLeft': 35,
+        'MouthPressRight': 36, 'MouthLowerDownLeft': 37, 'MouthLowerDownRight': 38, 'MouthUpperUpLeft': 39,
+        'MouthUpperUpRight': 40, 'BrowDownLeft': 41, 'BrowDownRight': 42, 'BrowInnerUp': 43,
+        'BrowOuterUpLeft': 44, 'BrowOuterUpRight': 45, 'CheekPuff': 46, 'CheekSquintLeft': 47,
+        'CheekSquintRight': 48, 'NoseSneerLeft': 49, 'NoseSneerRight': 50, 'TongueOut': 51,
+        'HeadYaw': 52, 'HeadPitch': 53, 'HeadRoll': 54, 'LeftEyeYaw': 55,
+        'LeftEyePitch': 56, 'LeftEyeRoll': 57, 'RightEyeYaw': 58, 'RightEyePitch': 59, 'RightEyeRoll': 60
+    }
+    
+    emotion_key = emotion.lower() if emotion else None
+    if emotion_key not in emotion_mappings:
+        print(f"⚠️ Unknown emotion: {emotion}")
+        return blendshapes_list
+    
+    emotion_coefficients = emotion_mappings[emotion_key]
+    modified_blendshapes = []
+    
+    for frame in blendshapes_list:
+        # Copy the original frame
+        modified_frame = frame.copy() if isinstance(frame, list) else list(frame)
+        
+        # Ensure frame has at least 61 values
+        while len(modified_frame) < 61:
+            modified_frame.append(0.0)
+        
+        # Apply emotion coefficients additively
+        for arkit_name, emotion_value in emotion_coefficients.items():
+            if arkit_name in arkit_to_index:
+                index = arkit_to_index[arkit_name]
+                if index < len(modified_frame):
+                    # Add emotion value to existing blendshape (clamped to [0, 1])
+                    original_value = float(modified_frame[index]) if modified_frame[index] is not None else 0.0
+                    new_value = original_value + emotion_value
+                    modified_frame[index] = min(1.0, max(0.0, new_value))
+        
+        modified_blendshapes.append(modified_frame)
+    
+    return modified_blendshapes
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 torch_dtype_audio = torch.bfloat16 if torch.cuda.is_available() else torch.float32
@@ -187,7 +310,6 @@ else:
 # ------------------- TTS API (Port 8000) -------------------
 app_tts = Flask("tts_app")
 
-
 if ENABLE_TTS_ENDPOINTS:
     @app_tts.route('/generate_speech', methods=['POST'])
     @time_endpoint
@@ -216,15 +338,33 @@ if ENABLE_TTS_ENDPOINTS:
                 log_event("synthesize_and_blendshapes", "failure", "No text data provided.")
                 return jsonify({"status": "error", "message": "No text data provided."}), 400
 
-            # NEW: Extract the optional voice parameter from the request
+            # EXISTING: Voice parameter
             voice = data.get("voice", "af_heart")
+            
+            # 🆕 NEW: Emotion parameters
+            emotion = data.get("emotion", None)  # e.g., "happy", "sad", "angry", "glücklich", "traurig"
+            emotion_intensity = data.get("emotion_intensity", 1.0)  # 0.0 to 1.0
+            
+            print(f"🎭 NeuroSync Request: text='{text[:50]}...', voice={voice}, emotion={emotion}, intensity={emotion_intensity}")
+
+            # Generate audio
             audio_bytes = generate_speech_segment_tts(text, tts_models["tts_pipeline"], tts_models["tts_lock"], voice=voice)
             if audio_bytes is None:
                 log_event("synthesize_and_blendshapes", "failure", "Failed to generate speech with TTS engine.")
                 return jsonify({"status": "error", "message": "Failed to generate speech with TTS engine."}), 500
 
+            # Generate blendshapes
             blendshapes_result = process_blendshapes(audio_bytes, blendshape_model, device, config)
             blendshapes_list = blendshapes_result.get("blendshapes", [])
+            
+            # 🆕 APPLY EMOTION MODIFICATION
+            if emotion and emotion_intensity > 0:
+                original_count = len(blendshapes_list)
+                blendshapes_list = apply_emotion_to_blendshapes(blendshapes_list, emotion, emotion_intensity)
+                print(f"🎭 Emotion '{emotion}' (intensity {emotion_intensity}) applied to {original_count} frames")
+                log_event("emotion_application", "success", f"Applied {emotion} with intensity {emotion_intensity} to {original_count} frames")
+
+            # Create multipart response
             boundary = "MY_BOUNDARY_STRING"
 
             part1 = (
@@ -233,6 +373,7 @@ if ENABLE_TTS_ENDPOINTS:
                 "Content-Disposition: attachment; filename=\"output.wav\"\r\n"
                 "\r\n"
             ).encode('utf-8') + audio_bytes + "\r\n".encode('utf-8')
+            
             part2_json = json.dumps(blendshapes_list).encode('utf-8')
             part2 = (
                 f"--{boundary}\r\n"
@@ -246,12 +387,38 @@ if ENABLE_TTS_ENDPOINTS:
 
             response = Response(multipart_body, status=200)
             response.headers["Content-Type"] = f"multipart/mixed; boundary={boundary}"
-            log_event("synthesize_and_blendshapes", "success", "Speech and blendshapes generated successfully.")
+            
+            success_msg = f"Speech and blendshapes generated successfully"
+            if emotion:
+                success_msg += f" with emotion: {emotion} (intensity: {emotion_intensity})"
+            
+            log_event("synthesize_and_blendshapes", "success", success_msg)
             return response
+            
         except Exception as e:
             err_msg = str(e)
+            print(f"❌ Error in synthesize_and_blendshapes: {err_msg}")
+            print(traceback.format_exc())
             log_event("synthesize_and_blendshapes", "failure", err_msg)
             return jsonify({"status": "error", "message": err_msg}), 500
+
+    # 🆕 NEW: Health check endpoint
+    @app_tts.route("/health", methods=["GET"])
+    def health_check():
+        return jsonify({
+            "status": "healthy",
+            "service": "NeuroSync TTS with Emotion Support",
+            "endpoints": [
+                "/generate_speech",
+                "/synthesize_and_blendshapes"
+            ],
+            "emotion_support": {
+                "enabled": True,
+                "supported_emotions": ["happy", "sad", "angry", "surprised", "glücklich", "traurig", "überrascht", "extrem"],
+                "intensity_range": "0.0 - 1.0"
+            }
+        })
+
 else:
     print("TTS endpoints are disabled.")
 
@@ -298,7 +465,8 @@ if __name__ == '__main__':
 
     if ENABLE_TTS_ENDPOINTS:
         def run_tts_app():
-            print("Starting TTS App on port 8000...")
+            print("🚀 Starting NeuroSync TTS App with Emotion Support on port 8000...")
+            print("🎭 Supported emotions: happy, sad, angry, surprised, glücklich, traurig, überrascht, extrem")
             app_tts.run(host='0.0.0.0', port=8000, debug=False)
         t_tts = Thread(target=run_tts_app)
         threads.append(t_tts)
