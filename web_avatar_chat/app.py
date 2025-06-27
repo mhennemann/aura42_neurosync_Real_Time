@@ -431,6 +431,18 @@ def trigger_emotion_animation():
                 'MouthDimpleLeft': 0.4,     # Grübchen
                 'MouthDimpleRight': 0.4
             }
+
+            'MAXIMUM': {
+                'MouthSmileLeft': 1.0,      # 100% statt 80%
+                'MouthSmileRight': 1.0,
+                'CheekSquintLeft': 1.0,     # 100% statt 70%
+                'CheekSquintRight': 1.0,
+                'EyeSquintLeft': 1.0,       # 100% statt 60%
+                'EyeSquintRight': 1.0,
+                'JawOpen': 1.0,             # 100% statt 30%
+                'BrowOuterUpLeft': 1.0,
+                'BrowOuterUpRight': 1.0
+            }
         }
         
         if emotion not in emotion_offsets:
