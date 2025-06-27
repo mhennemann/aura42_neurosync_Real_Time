@@ -376,6 +376,40 @@ def get_voices():
             "af_heart": "Englische Stimme - Rachel"
         }
     })
+@app.route('/api/trigger_emotion_animation', methods=['POST'])
+def trigger_emotion_animation():
+    """Triggert spezifische Emotion-Animation"""
+    try:
+        data = request.get_json()
+        emotion = data.get('emotion', '')
+        animation_file = data.get('animationFile', '')
+        
+        print(f"🎭 Emotion-Animation angefordert: {emotion} → {animation_file}")
+        
+        # Prüfen ob Animation-Datei existiert
+        if not os.path.exists(animation_file):
+            return jsonify({
+                "status": "error",
+                "message": f"Animation-Datei nicht gefunden: {animation_file}"
+            }), 404
+        
+        # TODO: Animation-Datei laden und an NeuroSync/LiveLink senden
+        # Für jetzt nur Logging
+        print(f"✅ Emotion-Animation bereit: {emotion}")
+        
+        return jsonify({
+            "status": "success",
+            "message": f"Emotion-Animation {emotion} getriggert",
+            "emotion": emotion,
+            "animationFile": animation_file
+        })
+        
+    except Exception as e:
+        print(f"❌ Emotion-Animation Fehler: {e}")
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
 
 if __name__ == '__main__':
     print("🚀 NeuroSync Web-Interface mit ChatGPT Integration...")

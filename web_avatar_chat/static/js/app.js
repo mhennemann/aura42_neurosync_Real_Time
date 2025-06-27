@@ -4,6 +4,84 @@ let mediaRecorder;
 let audioChunks = [];
 let currentAudioDelayMs = 40; // Standard Delay
 
+// 🆕 EMOTION DETECTION SYSTEM
+class EmotionDetector {
+    constructor() {
+        this.emotionTriggers = {};
+        this.loadTriggersFromBackend();
+    }
+
+    async loadTriggersFromBackend() {
+        try {
+            const response = await fetch('https://backend.aura42.de/api/config');
+            const config = await response.json();
+            this.emotionTriggers = config.config.animation_triggers || {};
+            console.log('🎭 Emotion-Trigger geladen:', this.emotionTriggers);
+        } catch (error) {
+            console.error('❌ Fehler beim Laden der Trigger:', error);
+        }
+    }
+
+    detectEmotion(text) {
+        const textLower = text.toLowerCase();
+
+        for (const [emotion, animationFile] of Object.entries(this.emotionTriggers)) {
+            if (textLower.includes(emotion)) {
+                console.log(`🎭 Emotion erkannt: "${emotion}" in "${text}"`);
+                console.log(`📁 Animation-Datei: ${animationFile}`);
+
+                return {
+                    detected: true,
+                    emotion: emotion,
+                    animationFile: animationFile,
+                    triggerWord: emotion
+                };
+            }
+        }
+
+        return { detected: false };
+    }
+
+    async triggerEmotionAnimation(emotion, animationFile) {
+        try {
+            console.log(`🎬 Triggere Emotion-Animation: ${emotion} → ${animationFile}`);
+
+            const response = await fetch('/api/trigger_emotion_animation', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    emotion: emotion,
+                    animationFile: animationFile
+                })
+            });
+
+            if (response.ok) {
+                this.showEmotionNotification(`🎭 ${emotion.charAt(0).toUpperCase() + emotion.slice(1)}-Animation getriggert`);
+            }
+
+        } catch (error) {
+            console.error('❌ Fehler beim Triggern der Emotion-Animation:', error);
+        }
+    }
+
+    showEmotionNotification(message) {
+        const notification = document.createElement('div');
+        notification.className = 'fixed top-16 right-4 bg-purple-500 text-white px-4 py-2 rounded-lg z-50 fade-in';
+        notification.textContent = message;
+        document.body.appendChild(notification);
+
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            setTimeout(() => notification.remove(), 300);
+        }, 3000);
+    }
+}
+
+// 🆕 GLOBAL EMOTION DETECTOR INITIALISIEREN
+window.emotionDetector = new EmotionDetector();
+
 // Audio Delay Management
 function initializeDelaySlider() {
     const slider = document.getElementById('audioDelaySlider');
@@ -136,12 +214,19 @@ function addMessageMobile(sender, message, type = 'user') {
     }
 }
 
-// ChatGPT Integration (unchanged core logic)
+// 🆕 ERWEITERTE SENDMESSAGE MIT EMOTION-DETECTION
 async function sendMessage() {
     const textInput = document.getElementById('textInput');
     const text = textInput.value.trim();
 
     if (!text) return;
+
+    // 🎭 EMOTION-DETECTION VOR CHAT-SEND
+    const emotionResult = window.emotionDetector.detectEmotion(text);
+    if (emotionResult.detected) {
+        console.log(`🎯 Emotion erkannt vor Chat-Send: ${emotionResult.emotion}`);
+        setStatus(`🎭 Emotion "${emotionResult.emotion}" erkannt!`, 'processing');
+    }
 
     addMessage('user', text);
     textInput.value = '';
@@ -166,6 +251,17 @@ async function sendMessage() {
                 setStatus(`🤖 ChatGPT: "${result.ai_response.substring(0, 40)}..." (${currentAudioDelayMs}ms)`, 'processing');
 
                 addMessage('avatar', result.ai_response, 'chatgpt-response');
+
+                // 🎭 EMOTION-ANIMATION NACH CHATGPT-RESPONSE TRIGGERN
+                if (emotionResult.detected) {
+                    console.log(`🎬 Triggere Emotion-Animation: ${emotionResult.emotion}`);
+                    setTimeout(() => {
+                        window.emotionDetector.triggerEmotionAnimation(
+                            emotionResult.emotion,
+                            emotionResult.animationFile
+                        );
+                    }, 1500); // Nach ChatGPT-Response
+                }
 
                 // Audio processing (unchanged)
                 const audioBytes = atob(result.audio_data);
@@ -194,7 +290,8 @@ async function sendMessage() {
                                     chatgpt_response: true,
                                     ai_text: result.ai_response,
                                     audio_delay: currentAudioDelayMs,
-                                    trigger_time: performance.now()
+                                    trigger_time: performance.now(),
+                                    emotion_detected: emotionResult.detected ? emotionResult.emotion : null
                                 })
                             });
 
@@ -211,15 +308,21 @@ async function sendMessage() {
                 audio.ontimeupdate = () => {
                     const progress = (audio.currentTime / audio.duration) * 100;
                     if (progress > 0) {
-                        setStatus(`🎵 Franzi spricht: ${Math.round(progress)}% (${currentAudioDelayMs}ms)`, 'speaking');
+                        const statusText = emotionResult.detected
+                            ? `🎵 Franzi spricht (${emotionResult.emotion}): ${Math.round(progress)}%`
+                            : `🎵 Franzi spricht: ${Math.round(progress)}% (${currentAudioDelayMs}ms)`;
+                        setStatus(statusText, 'speaking');
                     }
                 };
 
                 audio.onended = () => {
                     console.log(`🎊 ChatGPT Audio-Event Synchronisation komplett (${currentAudioDelayMs}ms)!`);
-                    setStatus(`✅ Franzi hat geantwortet (Delay: ${currentAudioDelayMs}ms)`, 'success');
+                    const endStatus = emotionResult.detected
+                        ? `✅ Franzi hat emotional geantwortet (${emotionResult.emotion})`
+                        : `✅ Franzi hat geantwortet (Delay: ${currentAudioDelayMs}ms)`;
+                    setStatus(endStatus, 'success');
                     setTimeout(() => {
-                        setStatus(`Bereit für die nächste Frage • Minimalistisches Design aktiv`, 'ready');
+                        setStatus(`Bereit für die nächste Frage • Emotion-Detection aktiv`, 'ready');
                     }, 2000);
                     URL.revokeObjectURL(audioUrl);
                 };
@@ -272,7 +375,7 @@ async function sendMessage() {
     }
 }
 
-// Recording Functions
+// Recording Functions (unchanged)
 async function toggleRecording() {
     const micButton = document.getElementById('micButton');
     const micButtonMobile = document.getElementById('micButtonMobile');
@@ -384,7 +487,7 @@ async function transcribeAudio(audioBlob) {
     }
 }
 
-// Utility Functions
+// Utility Functions (unchanged)
 function clearChat() {
     const messagesDiv = document.getElementById('chatMessages');
     const mobileMessages = document.getElementById('chatMessagesMobile');
@@ -392,8 +495,8 @@ function clearChat() {
     const welcomeMessage = `
         <div class="mb-4 p-3 rounded-lg bg-bg-secondary mr-5 border border-border-custom fade-in">
             <strong class="block mb-1 text-xs opacity-80 text-text-primary">Franzi (KI)</strong>
-            <div class="text-text-primary">Hallo! Minimalistisches Design mit Schwarz-Weiß Palette. Pink nur für wichtige Action-Buttons!</div>
-            <small class="text-xs opacity-60 block mt-1 text-text-muted">ChatGPT + Audio-Delay-Slider bereit (${currentAudioDelayMs}ms)</small>
+            <div class="text-text-primary">Hallo! Minimalistisches Design mit Emotion-Detection aktiv!</div>
+            <small class="text-xs opacity-60 block mt-1 text-text-muted">ChatGPT + Emotion-Trigger + Audio-Delay-Slider bereit (${currentAudioDelayMs}ms)</small>
         </div>
     `;
 
@@ -401,7 +504,7 @@ function clearChat() {
     if (mobileMessages) mobileMessages.innerHTML = `
         <div class="bg-bg-tertiary/90 p-3 rounded-lg border border-border-custom text-sm fade-in">
             <div class="font-semibold text-xs mb-1 text-text-primary">Avatar</div>
-            <div>Bereit zum Chatten!</div>
+            <div>Bereit zum Chatten mit Emotion-Detection!</div>
         </div>
     `;
 
@@ -414,8 +517,8 @@ function clearChat() {
         }
     });
 
-    setStatus(`Chat gelöscht • Minimalistisches Design aktiv`, 'ready');
-    console.log(`🧹 Chat gelöscht - ChatGPT + Delay-Slider (${currentAudioDelayMs}ms) aktiv`);
+    setStatus(`Chat gelöscht • Emotion-Detection aktiv`, 'ready');
+    console.log(`🧹 Chat gelöscht - ChatGPT + Emotion-Detection + Delay-Slider (${currentAudioDelayMs}ms) aktiv`);
 }
 
 function toggleStream() {
@@ -449,7 +552,7 @@ function resetStream() {
     setStatus('Avatar-Stream zurückgesetzt', 'info');
 }
 
-// Mobile Functions
+// Mobile Functions (unchanged)
 function sendMessageMobile() {
     const input = document.getElementById('textInputMobile');
     const desktopInput = document.getElementById('textInput');
@@ -547,7 +650,7 @@ async function checkSystemHealth() {
                 setStatus('⚠️ NeuroSync Server offline', 'error');
                 addMessage('system', 'NeuroSync AI Server ist nicht erreichbar.', 'error');
             } else if (health.ai_integration === 'ChatGPT (OpenAI)') {
-                setStatus(`✅ ChatGPT + Minimalistisches Design aktiv (${currentAudioDelayMs}ms)`, 'ready');
+                setStatus(`✅ ChatGPT + Emotion-Detection aktiv (${currentAudioDelayMs}ms)`, 'ready');
             } else {
                 setStatus('✅ NeuroSync System verbunden', 'ready');
             }
@@ -588,11 +691,11 @@ document.addEventListener('DOMContentLoaded', function () {
     syncDelaySliders();
     checkSystemHealth();
 
-    setStatus(`Minimalistisches Design geladen • Audio-Delay: ${currentAudioDelayMs}ms`, 'ready');
+    setStatus(`Emotion-Detection geladen • Audio-Delay: ${currentAudioDelayMs}ms`, 'ready');
 
-    console.log('🎉 NeuroSync Avatar Chat - Minimalistic Tailwind Design loaded!');
+    console.log('🎉 NeuroSync Avatar Chat - Emotion-Detection loaded!');
     console.log(`🎨 Design: Schwarz-Weiß minimalistisch + Pink Action-Buttons`);
-    console.log(`🤖 Features: ChatGPT + Audio-Event Sync + Delay (${currentAudioDelayMs}ms)`);
+    console.log(`🎭 Features: ChatGPT + Emotion-Detection + Audio-Event Sync + Delay (${currentAudioDelayMs}ms)`);
 });
 
 // Mobile optimizations
@@ -616,7 +719,7 @@ setMobileVH();
 // Regular health checks
 setInterval(checkSystemHealth, 30000);
 
-console.log('🚀 NeuroSync Avatar Chat - Minimalistic Tailwind CSS Design');
+console.log('🚀 NeuroSync Avatar Chat - Emotion-Detection System');
 console.log('🎨 Schwarz-Weiß Palette + Pink Action-Buttons');
 console.log('📱 Responsive Desktop + Mobile Layout');
-console.log('🤖 ChatGPT + Audio-Sync + Avatar Integration');
+console.log('🎭 ChatGPT + Emotion-Detection + Avatar Integration');
