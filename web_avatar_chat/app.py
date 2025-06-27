@@ -378,7 +378,7 @@ def get_voices():
     })
 @app.route('/api/trigger_emotion_animation', methods=['POST'])
 def trigger_emotion_animation():
-    """Triggert Emotion-Animation mit numerischer Konvertierung"""
+    """Triggert Emotion-Animation OHNE ChatGPT-Konflikt"""
     try:
         data = request.get_json()
         emotion = data.get('emotion', '')
@@ -389,13 +389,11 @@ def trigger_emotion_animation():
         if not os.path.exists(animation_file):
             return jsonify({"status": "error", "message": "Animation nicht gefunden"}), 404
         
-        # CSV laden
+        # CSV laden und konvertieren
         import pandas as pd
         animation_df = pd.read_csv(animation_file)
         
-        print(f"📊 Animation geladen: {len(animation_df)} Frames")
-        
-        # 🆕 ARKit-Namen zu numerischen Indizes konvertieren (wie NeuroSync AI)
+        # ARKit zu numerisch konvertieren (gleicher Code wie vorhin)
         arkit_to_index = {
             'EyeBlinkLeft': 0, 'EyeLookDownLeft': 1, 'EyeLookInLeft': 2, 'EyeLookOutLeft': 3,
             'EyeLookUpLeft': 4, 'EyeSquintLeft': 5, 'EyeWideLeft': 6, 'EyeBlinkRight': 7,
@@ -414,32 +412,23 @@ def trigger_emotion_animation():
             'LeftEyePitch': 56, 'LeftEyeRoll': 57, 'RightEyeYaw': 58, 'RightEyePitch': 59, 'RightEyeRoll': 60
         }
         
-        # 🆕 NUMERISCHE BLENDSHAPES ERSTELLEN (wie NeuroSync AI)
-        blendshapes_list = []
+        # Numerische Blendshapes erstellen
+        emotion_blendshapes = []  # 🆕 SEPARATE VARIABLE!
         for _, row in animation_df.iterrows():
-            # Numerisches Dict erstellen (0-60)
             frame_data = {}
-            
-            # Alle Indizes mit 0.0 initialisieren
             for i in range(61):
                 frame_data[i] = 0.0
             
-            # ARKit-Namen zu numerischen Indizes konvertieren
             for arkit_name, index in arkit_to_index.items():
                 if arkit_name in animation_df.columns:
                     value = float(row[arkit_name]) if pd.notna(row[arkit_name]) else 0.0
                     frame_data[index] = value
                     
-            blendshapes_list.append(frame_data)
+            emotion_blendshapes.append(frame_data)
         
-        # Global setzen (wie ChatGPT)
-        global current_blendshapes
-        current_blendshapes = blendshapes_list
+        print(f"🎬 Emotion-Blendshapes separat erstellt: {emotion} ({len(emotion_blendshapes)} frames)")
         
-        print(f"🎬 Emotion-Blendshapes numerisch konvertiert: {emotion} ({len(blendshapes_list)} frames)")
-        print(f"📋 Sample Frame Keys: {list(blendshapes_list[0].keys())[:10]}... (numerisch)")
-        
-        # EXAKT DER GLEICHE LIVELINK-CODE WIE CHATGPT
+        # 🆕 SEPARATE LIVELINK-VERBINDUNG (nicht global!)
         from livelink.connect.livelink_init import create_socket_connection, initialize_py_face
         from livelink.send_to_unreal import pre_encode_facial_data, send_pre_encoded_data_to_unreal
         from threading import Event, Thread
@@ -448,14 +437,14 @@ def trigger_emotion_animation():
             try:
                 py_face = initialize_py_face()
                 socket_connection = create_socket_connection()
-                encoded_data = pre_encode_facial_data(current_blendshapes, py_face)
+                encoded_data = pre_encode_facial_data(emotion_blendshapes, py_face)  # 🆕 SEPARATE DATEN!
                 
                 start_event = Event()
                 start_event.set()
                 
-                print(f"🎭 {emotion.title()} LiveLink Animation startet für {len(current_blendshapes)} frames...")
+                print(f"🎭 {emotion.title()} Animation startet (separate Verbindung)...")
                 send_pre_encoded_data_to_unreal(encoded_data, start_event, 30, socket_connection)
-                print(f"🎭 {emotion.title()} LiveLink Animation komplett")
+                print(f"🎭 {emotion.title()} Animation komplett")
                 
             except Exception as e:
                 print(f"❌ {emotion} LiveLink Fehler: {e}")
@@ -468,18 +457,15 @@ def trigger_emotion_animation():
         
         return jsonify({
             "status": "success",
-            "message": f"Emotion-Animation {emotion} numerisch konvertiert",
+            "message": f"Emotion-Animation {emotion} separat getriggert",
             "emotion": emotion,
-            "animationFile": animation_file,
-            "frames": len(blendshapes_list),
+            "frames": len(emotion_blendshapes),
             "livelink_triggered": True,
-            "conversion": "arkit_to_numeric"
+            "conflict_free": True
         })
         
     except Exception as e:
         print(f"❌ Emotion-Animation Fehler: {e}")
-        import traceback
-        traceback.print_exc()
         return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == '__main__':
